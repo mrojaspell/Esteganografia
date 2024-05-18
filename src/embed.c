@@ -1,9 +1,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "include/embed.h"
 #include "include/enums.h"
+#include "include/print_error.h"
 
 #define REQUIRED_PARAMS_NO 4
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -24,15 +26,15 @@ status_code set_params(struct params * params, int argc, char * argv[]);
 status_code set_param(struct params * params, char * arg_name, char * arg_value);
 
 status_code embed(int argc, char * argv[]){
-    
-
     // Initialize params
     struct params params = {0};
 
     // Set params
     status_code status = set_params(&params, argc, argv);
-    if (status != EXIT_SUCCESS)
+    if (status != EXIT_SUCCESS){
+        print_error("Error in -embed params\n");
         return status;
+    }
 
 
     return EXIT_SUCCESS;
