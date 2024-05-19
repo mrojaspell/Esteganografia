@@ -10,14 +10,14 @@
 int main(int argc, char * argv[]){
     if (argc < 2){
         print_error("You need to include either \"-embed\" or \"-extract\"\n");
-        return EXIT_ILLEGAL_ARGUMENTS;
+        return ILLEGAL_ARGUMENTS;
     }
 
     // Parse program mode: EMBED/EXTRACT
     program_mode mode = get_program_mode(argv[1]);
     if (mode == UNSPECIFIED_MODE){
         print_error("Incorrect program mode. It should be either -embed or -extract.\n");
-        return EXIT_ILLEGAL_ARGUMENTS;
+        return ILLEGAL_ARGUMENTS;
     }
 
     argv += 2;

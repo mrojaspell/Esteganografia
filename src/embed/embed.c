@@ -6,6 +6,8 @@
 #include "include/embed.h"
 #include "include/enums.h"
 #include "include/print_error.h"
+#include "include/status_codes.h"
+#include "include/embed_lsb1.h"
 
 #define REQUIRED_PARAMS_NO 4
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -31,32 +33,44 @@ status_code embed(int argc, char * argv[]){
 
     // Set params
     status_code status = set_params(&params, argc, argv);
-    if (status != EXIT_SUCCESS){
+    if (status != SUCCESS){
         print_error("Error in -embed params\n");
         return status;
     }
 
+    switch (params.steg){
+    case LSB1:
+        embed_lsb1(params.in_file, params.p_bitmap_file, params.out_bitmap_file);
+        break;
+    case LSB4:
+        break;
+    case LSBI:
+        break;
+    default:
+        return INVALID_STEG_ALG;
+    }
 
-    return EXIT_SUCCESS;
+
+    return SUCCESS;
 }
 
 status_code set_params(struct params * params, int argc, char * argv[]){
     // Check correct number
     if (argc < REQUIRED_ARGS_NO * 2 || argc % 2 == 1)
-        return EXIT_ILLEGAL_ARGUMENTS;
+        return ILLEGAL_ARGUMENTS;
 
     // Set params struct
     for (int i = 0; i < argc; i+=2){
         int status = set_param(params, argv[i], argv[i+1]);
-        if (status != EXIT_SUCCESS)
+        if (status != SUCCESS)
             return status;
     }
 
     // Check that the struct is valid
     if (params->in_file == NULL || params->p_bitmap_file == NULL || params->out_bitmap_file == NULL || params->steg == UNSPECIFIED_STEG)
-        return EXIT_ILLEGAL_ARGUMENTS;
+        return ILLEGAL_ARGUMENTS;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 status_code set_param(struct params * params, char * arg_name, char * arg_value){
@@ -90,7 +104,7 @@ status_code set_param(struct params * params, char * arg_name, char * arg_value)
     }
 
     if (error_ocurred)
-        return EXIT_ILLEGAL_ARGUMENTS;
-    return EXIT_SUCCESS;
+        return ILLEGAL_ARGUMENTS;
+    return SUCCESS;
 }
 

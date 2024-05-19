@@ -53,4 +53,7 @@ dkms.conf
 
 .vscode/*
 !.vscode/launch.json
+
+.fleet/
+
 bin/

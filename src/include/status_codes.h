@@ -2,8 +2,12 @@
 #define STATUS_CODES_H
 
 typedef enum status_code {
-    EXIT_SUCCESS,
-    EXIT_ILLEGAL_ARGUMENTS
+    SUCCESS,
+    ILLEGAL_ARGUMENTS,
+    INVALID_IN_FILE,
+    INVALID_P_FILE,
+    INVALID_OUT_PATH,
+    INVALID_STEG_ALG
     // add more codes here
 } status_code;
 
