@@ -1,5 +1,5 @@
-#ifndef _ENUM_H
-#define _ENUM_H
+#ifndef ENUM_H
+#define ENUM_H
 #include <stdbool.h>
 
 // Program Mode
