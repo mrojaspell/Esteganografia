@@ -1,7 +1,8 @@
-#ifndef EMBED_H
-#define EMBED_H
-#include "status_codes.h"
+#ifndef _EMBED_H
+#define _EMBED_H
 
-status_code embed(int argc, char * argv[]);
+#include "exit.h"
+
+//status_code embed(int argc, char * argv[]);
 
 #endif
