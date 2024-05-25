@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "include/embed.h"
-#include "include/enums.h"
-#include "include/print_error.h"
-#include "include/status_codes.h"
-#include "include/embed_lsb1.h"
+#include "embed.h"
+#include "enums.h"
+#include "print_error.h"
+#include "status_codes.h"
+#include "embed_lsb1.h"
 
 #define REQUIRED_PARAMS_NO 4
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -23,15 +23,15 @@ struct params {
     char * password;
 };
 
-status_code set_params(struct params * params, int argc, char * argv[]);
-status_code set_param(struct params * params, char * arg_name, char * arg_value);
+status_code set_params_extract(struct params * params, int argc, char * argv[]);
+status_code set_param_extract(struct params * params, char * arg_name, char * arg_value);
 
 status_code extract(int argc, char * argv[]){
     // Initialize params
     struct params params = {0};
 
     // Set params
-    status_code status = set_params(&params, argc, argv);
+    status_code status = set_params_extract(&params, argc, argv);
     if (status != SUCCESS){
         print_error("Error in -embed params\n");
         return status;
@@ -39,7 +39,7 @@ status_code extract(int argc, char * argv[]){
 
     switch (params.steg){
     case LSB1:
-        extract_lsb1(params.p_bitmap_file, params.out_bitmap_file);
+        // extract_lsb1(params.p_bitmap_file, params.out_bitmap_file);
         break;
     case LSB4:
         break;
@@ -53,14 +53,14 @@ status_code extract(int argc, char * argv[]){
     return SUCCESS;
 }
 
-status_code set_params(struct params * params, int argc, char * argv[]){
+status_code set_params_extract(struct params * params, int argc, char * argv[]){
     // Check correct number
     if (argc < REQUIRED_ARGS_NO * 2 || argc % 2 == 1)
         return ILLEGAL_ARGUMENTS;
 
     // Set params struct
     for (int i = 0; i < argc; i+=2){
-        int status = set_param(params, argv[i], argv[i+1]);
+        int status = set_param_extract(params, argv[i], argv[i+1]);
         if (status != SUCCESS)
             return status;
     }
@@ -72,7 +72,7 @@ status_code set_params(struct params * params, int argc, char * argv[]){
     return SUCCESS;
 }
 
-status_code set_param(struct params * params, char * arg_name, char * arg_value){
+status_code set_param_extract(struct params * params, char * arg_name, char * arg_value){
     bool error_ocurred = false;
     
     if (!strcmp(arg_name, "-p")){
