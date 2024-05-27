@@ -97,9 +97,12 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
     }
 
 handle_errors:
-    fclose(in_file);
-    fclose(p_file);
-    fclose(out_file);
+    if (in_file != NULL)
+        fclose(in_file);
+    if (p_file != NULL)
+        fclose(p_file);
+    if (out_file != NULL)
+        fclose(out_file);
 
     return exit_code;
 }
