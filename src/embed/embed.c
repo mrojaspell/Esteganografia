@@ -8,6 +8,7 @@
 #include "print_error.h"
 #include "status_codes.h"
 #include "embed_lsb1.h"
+#include "embed_lsb4.h"
 
 #define REQUIRED_PARAMS_NO 4
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -43,6 +44,7 @@ status_code embed(int argc, char* argv[]) {
         embed_lsb1(params.in_file, params.p_bitmap_file, params.out_bitmap_file);
         break;
     case LSB4:
+        embed_lsb4(params.in_file, params.p_bitmap_file, params.out_bitmap_file);
         break;
     case LSBI:
         break;

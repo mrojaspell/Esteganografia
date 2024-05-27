@@ -7,7 +7,11 @@ typedef enum status_code {
     INVALID_IN_FILE,
     INVALID_P_FILE,
     INVALID_OUT_PATH,
-    INVALID_STEG_ALG
+    INVALID_STEG_ALG,
+    FILE_OPEN_ERROR,
+    FILE_READ_ERROR,
+    FILE_WRITE_ERROR,
+    SECRET_TOO_BIG,
     // add more codes here
 } status_code;
 
