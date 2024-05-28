@@ -6,7 +6,6 @@
 
 #include "get_file_size.h"
 
-#define BMP_HEADER_SIZE 54
 
 status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_path) {
     const off_t in_file_size = get_file_size(in_file_path);
@@ -25,6 +24,7 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
 
     // Since we are using lsb4, we use 4 bits of carrier per byte of secret, so the secret can be at most 1/2 of the carrier
     if (p_file_size < in_file_size * 2 + 4 + extension_size + BMP_HEADER_SIZE) {
+        // TODO: Show maximum secret size for bmp
         exit_code = SECRET_TOO_BIG;
         goto handle_errors;
     }

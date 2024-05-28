@@ -14,6 +14,7 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
     
     // queremos *8 porque es 1 bit por cada byte
     if(in_file_size*8 > (p_file_size-HEADER_SIZE-EXTENSION_SIZE)){
+        // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
         return ILLEGAL_ARGUMENTS; //cambiar
     }
