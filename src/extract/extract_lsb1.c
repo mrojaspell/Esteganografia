@@ -10,9 +10,6 @@
 
 #include "print_error.h"
 
-#define SECRET_SIZE_BYTES 4
-#define SECRET_SIZE_IN_COVER(X) (X*8)
-
 // hidden as (real size (4 bytes total) || data || file extension (eg: .txt))
 status_code extract_lsb1(const char* p_bmp, const char* out_file_path) {
     status_code exit_code = SUCCESS;
@@ -37,14 +34,14 @@ status_code extract_lsb1(const char* p_bmp, const char* out_file_path) {
         goto finally;;
     }
 
-    uint8_t size_buffer[SECRET_SIZE_IN_COVER(SECRET_SIZE_BYTES)] = {0};
-    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER(SECRET_SIZE_BYTES), p_file) <
-        SECRET_SIZE_IN_COVER(SECRET_SIZE_BYTES)) {
+    uint8_t size_buffer[SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES)] = {0};
+    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES), p_file) <
+        SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
-    for (int i = 0; i < SECRET_SIZE_IN_COVER(SECRET_SIZE_BYTES); i++) {
+    for (int i = 0; i < SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES); i++) {
         size = (size << 1) | (size_buffer[i] & 0x1);
     }
 
@@ -55,21 +52,21 @@ status_code extract_lsb1(const char* p_bmp, const char* out_file_path) {
         goto finally;
     }
 
-    in_buffer = malloc(SECRET_SIZE_IN_COVER(size));
+    in_buffer = malloc(SECRET_SIZE_IN_COVER_LSB1(size));
     size_t in_iterator = 0;
     if (in_buffer == NULL) {
         exit_code = MEMORY_ERROR;
         goto finally;
     }
 
-    if (fread(in_buffer, 1, size * 8, p_file) < SECRET_SIZE_IN_COVER(size)) {
+    if (fread(in_buffer, 1, size * 8, p_file) < SECRET_SIZE_IN_COVER_LSB1(size)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
     for (; out_iterator < size; out_iterator++) {
         uint8_t byte = 0;
-        for (int limit = in_iterator + SECRET_SIZE_IN_COVER(1); in_iterator < limit; in_iterator++) {
+        for (int limit = in_iterator + SECRET_SIZE_IN_COVER_LSB1(1); in_iterator < limit; in_iterator++) {
             byte = (byte << 1) | (in_buffer[in_iterator] & 0x1);
         }
         out_buffer[out_iterator] = byte;

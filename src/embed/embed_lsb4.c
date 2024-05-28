@@ -6,6 +6,8 @@
 
 #include "get_file_size.h"
 
+#define SIZE_BYTES_ENCODED SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES)
+
 
 status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_path) {
     const off_t in_file_size = get_file_size(in_file_path);
@@ -52,12 +54,30 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
     uint8_t out_buffer[BUFSIZ] = {0};
 
     fread(in_buffer, 1, BMP_HEADER_SIZE, p_file);
-    if (fwrite(in_buffer, 1, BMP_HEADER_SIZE, out_file) == 0) {
+    if (fwrite(in_buffer, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_WRITE_ERROR;
         goto handle_errors;
     }
 
     size_t bytes_read_in = 0, bytes_read_p = 0;
+
+    if (fread(p_buffer, 1, SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES), p_file) < SECRET_SIZE_IN_COVER_LSB4(
+        SECRET_SIZE_BYTES)) {
+        exit_code = FILE_READ_ERROR;
+        goto handle_errors;
+    }
+
+
+    // Saving the secret file size
+
+    for (int i = 0; i < SIZE_BYTES_ENCODED; i++) {
+        out_buffer[i] = (p_buffer[i] & 0xF0) | ((in_file_size >> (32 - (i + 1) * 4)) & 0x0F);
+    }
+
+    if (fwrite(out_buffer, 1, SIZE_BYTES_ENCODED, out_file) < SIZE_BYTES_ENCODED) {
+        exit_code = FILE_WRITE_ERROR;
+        goto handle_errors;
+    }
 
     while ((bytes_read_p = fread(p_buffer, 1, sizeof(p_buffer), in_file)) > 0) {
         bytes_read_in = fread(in_buffer, 1, bytes_read_p / 2, p_file);
