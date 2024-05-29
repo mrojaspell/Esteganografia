@@ -8,18 +8,20 @@
 #include <stdio.h>
 #include <string.h>
 
-#define EXTENSION_SIZE 4
 #define SIZE_BYTES_ENCODED SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES)
 
 status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_path) {
     off_t in_file_size = get_file_size(in_file_path);
     off_t p_file_size = get_file_size(p_file_path);
     status_code exit_code = SUCCESS;
+    char extension[MAX_EXTENSION_SIZE] = {0};
 
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
 
+    const int extension_size = get_file_extension(in_file_path, extension);
+
     // queremos *8 porque es 1 bit por cada byte
-    if (in_file_size * 8 > (p_file_size - BMP_HEADER_SIZE - EXTENSION_SIZE)) {
+    if (in_file_size * 8 > (p_file_size - BMP_HEADER_SIZE - extension_size)) {
         // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
         exit_code = SECRET_TOO_BIG;
@@ -54,7 +56,7 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
-    if (fwrite(header, 1, BMP_HEADER_SIZE, out_file)) {
+    if (fwrite(header, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_WRITE_ERROR;
         goto finally;
     };
@@ -89,7 +91,7 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
                 goto finally;
             }
             out_byte = (p_byte & 0xFE) | ((in_byte >> (i - 1)) & 0x01);
-            if (fwrite(&out_byte, 1, 1, out_file)) {
+            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
                 exit_code = FILE_WRITE_ERROR;
                 goto finally;
             }
@@ -99,6 +101,21 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
     if (ferror(in_file)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
+    }
+
+    // We use <= to also copy the '\0'
+    for (int i = 0; i <= extension_size; i++) {
+        for (int j = 8; j > 0; j--) {
+            if (fread(&p_byte, 1, 1, p_file) < 1) {
+                exit_code = FILE_READ_ERROR;
+                goto finally;
+            }
+            out_byte = (p_byte & 0xFE) | ((extension[j]));
+            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
+                exit_code = FILE_WRITE_ERROR;
+                goto finally;
+            }
+        }
     }
 
     uint8_t buffer[BUFSIZ] = {0};
@@ -118,9 +135,15 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
 
 finally:
     //cerramos archivos
-    fclose(in_file);
-    fclose(p_file);
-    fclose(out_file);
+    if (in_file != NULL) {
+        fclose(in_file);
+    }
+    if (p_file != NULL) {
+        fclose(p_file);
+    }
+    if (out_file != NULL) {
+        fclose(out_file);
+    }
 
     return exit_code;
 }
