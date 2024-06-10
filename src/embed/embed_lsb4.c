@@ -1,10 +1,12 @@
 #include "embed_lsb4.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
 #include "get_file_size.h"
+#include "print_error.h"
 
 #define SIZE_BYTES_ENCODED SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES)
 
@@ -46,73 +48,87 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
         goto handle_errors;
     }
 
-    uint8_t in_buffer[BUFSIZ] = {0};
-    uint8_t p_buffer[BUFSIZ] = {0};
-    uint8_t out_buffer[BUFSIZ] = {0};
-
-    if (fread(in_buffer, 1, BMP_HEADER_SIZE, p_file)) {
+    unsigned char header[BMP_HEADER_SIZE];
+    if (fread(header, 1, BMP_HEADER_SIZE, p_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_READ_ERROR;
         goto handle_errors;
     }
-    if (fwrite(in_buffer, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
+    if (fwrite(header, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_WRITE_ERROR;
-        goto handle_errors;
-    }
-
-    size_t bytes_read_in = 0, bytes_read_p = 0;
-
-    if (fread(p_buffer, 1, SIZE_BYTES_ENCODED, p_file) < SIZE_BYTES_ENCODED) {
-        exit_code = FILE_READ_ERROR;
         goto handle_errors;
     }
 
     // Saving the secret file size
-    for (int i = 0; i < SIZE_BYTES_ENCODED; i++) {
-        out_buffer[i] = (p_buffer[i] & 0xF0) | ((in_file_size >> (32 - (i + 1) * 4)) & 0x0F);
+    uint8_t file_size_buffer[SIZE_BYTES_ENCODED] = {0};
+    if (fread(file_size_buffer, 1, SIZE_BYTES_ENCODED, p_file) < SIZE_BYTES_ENCODED) {
+        exit_code = FILE_READ_ERROR;
+        goto handle_errors;
     }
 
-    if (fwrite(out_buffer, 1, SIZE_BYTES_ENCODED, out_file) < SIZE_BYTES_ENCODED) {
+    for (int i = 0; i < SIZE_BYTES_ENCODED; i++) {
+        file_size_buffer[i] = (file_size_buffer[i] & 0xF0) | ((in_file_size >> (32 - (i + 1) * 4)) & 0x0F);
+    }
+
+    if (fwrite(file_size_buffer, 1, SIZE_BYTES_ENCODED, out_file) < SIZE_BYTES_ENCODED) {
         exit_code = FILE_WRITE_ERROR;
         goto handle_errors;
     }
 
-    while ((bytes_read_p = fread(p_buffer, 1, sizeof(p_buffer), in_file)) > 0) {
-        bytes_read_in = fread(in_buffer, 1, bytes_read_p / 2, p_file);
-        if (bytes_read_in < bytes_read_p / 2) {
-            if (feof(p_file))
-                break;
+    uint8_t in_byte;
+    uint8_t p_byte;
+    uint8_t out_byte;
 
-            exit_code = FILE_READ_ERROR;
-            goto handle_errors;
+    while (fread(&in_byte, 1, 1, in_file) == 1) {
+        for (int i = 8; i > 0; i = i - 4) {
+            if (fread(&p_byte, 1, 1, p_file) < 1) {
+                exit_code = FILE_READ_ERROR;
+                goto handle_errors;
+            }
+            out_byte = (p_byte & 0xF0) | ((in_byte >> (i - 4)) & 0x0F);
+            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
+                exit_code = FILE_WRITE_ERROR;
+                goto handle_errors;
+            }
         }
+    }
 
-        for (size_t i = 0; i < bytes_read_in;) {
-            const uint8_t byte = in_buffer[i / 2];
-            const uint8_t high_nibble = byte >> 4;
-            const uint8_t low_nibble = byte & 0x0F;
-            out_buffer[i++] = (p_buffer[i] & 0xF0) | high_nibble;
-            out_buffer[i++] = (p_buffer[i] & 0xF0) | low_nibble;
+    // fread(in_file) failed for a reason other than EOF
+    if (ferror(in_file)) {
+        exit_code = FILE_READ_ERROR;
+        goto handle_errors;
+    }
+
+    // We use <= to also copy the '\0'
+    for (int i = 0; i <= extension_size; i++) {
+        for (int j = 8; j > 0; j -= 8) {
+            if (fread(&p_byte, 1, 1, p_file) < 1) {
+                exit_code = FILE_READ_ERROR;
+                goto handle_errors;
+            }
+            out_byte = (p_byte & 0xF0) | ((extension[i] >> (j - 4)) & 0x0F);
+            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
+                exit_code = FILE_WRITE_ERROR;
+                goto handle_errors;
+            }
         }
+    }
 
-        if (fwrite(out_buffer, 1, bytes_read_in * 2, out_file) < bytes_read_in * 2) {
+    uint8_t buffer[BUFSIZ] = {0};
+    size_t read = 0;
+
+    while ((read = fread(buffer, 1, BUFSIZ, p_file)) > 0) {
+        if (fwrite(buffer, 1, read, out_file) < read) {
+            print_error(strerror(errno));
             exit_code = FILE_WRITE_ERROR;
             goto handle_errors;
         }
     }
 
-    // We use <= to also copy the '\0'
-    for (int i = 0; i <= extension_size; i++) {
-        const uint8_t byte = extension[i];
-        const uint8_t high_nibble = byte >> 4;
-        const uint8_t low_nibble = byte & 0x0F;
-        out_buffer[i * 2] = (p_buffer[i * 2] & 0xF0) | high_nibble;
-        out_buffer[i * 2 + 1] = (p_buffer[i * 2 + 1] & 0xF0) | low_nibble;
-    }
-
-    if (fwrite(out_buffer, 1, extension_size * 2, out_file) < extension_size * 2) {
-        exit_code = FILE_WRITE_ERROR;
+    if (ferror(p_file)) {
+        exit_code = FILE_READ_ERROR;
         goto handle_errors;
     }
+
 
 handle_errors:
     if (in_file != NULL)

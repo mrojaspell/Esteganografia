@@ -7,6 +7,7 @@
 #include "print_error.h"
 #include "status_codes.h"
 #include "extract_lsb1.h"
+#include "extract_lsb4.h"
 
 #define REQUIRED_PARAMS_NO 3
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -41,6 +42,7 @@ status_code extract(int argc, char * argv[]){
         extract_lsb1(params.p_bitmap_file, params.out_bitmap_file);
         break;
     case LSB4:
+        extract_lsb4(params.p_bitmap_file, params.out_bitmap_file);
         break;
     case LSBI:
         break;

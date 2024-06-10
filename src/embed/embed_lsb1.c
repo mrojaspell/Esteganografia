@@ -110,7 +110,7 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
                 exit_code = FILE_READ_ERROR;
                 goto finally;
             }
-            out_byte = (p_byte & 0xFE) | ((extension[j]));
+            out_byte = (p_byte & 0xFE) | ((extension[i] >> (j-1)) & 0x01);
             if (fwrite(&out_byte, 1, 1, out_file) < 1) {
                 exit_code = FILE_WRITE_ERROR;
                 goto finally;
@@ -129,8 +129,9 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
         }
     }
 
-    if (ferror(in_file)) {
-        return FILE_READ_ERROR;
+    if (ferror(p_file)) {
+        exit_code = FILE_READ_ERROR;
+        goto finally;
     }
 
 finally:
