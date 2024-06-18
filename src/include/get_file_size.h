@@ -1,6 +1,7 @@
 #ifndef GET_FILE_SIZE_H
 #define GET_FILE_SIZE_H
 #include <sys/types.h>  // For off_t
+#include <stdint.h>
 
 // Max length we allow for file extensions
 #define MAX_EXTENSION_SIZE 10
@@ -10,7 +11,8 @@
 #define SECRET_SIZE_BYTES 4
 
 // The bytes to store the payload size in OUT file
-#define FILE_LENGTH_BYTES 4 
+#define FILE_LENGTH_BYTES 4
+#define FILE_LENGTH_BITS FILE_LENGTH_BYTES * 8
 
 #define SECRET_SIZE_IN_COVER_LSB1(X) (X*8)
 #define SECRET_SIZE_IN_COVER_LSB4(X) (X*2)

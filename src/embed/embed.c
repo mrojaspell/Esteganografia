@@ -7,8 +7,6 @@
 #include "enums.h"
 #include "print_error.h"
 #include "status_codes.h"
-#include "embed_lsb1.h"
-#include "embed_lsb4.h"
 #include "embed_lsbn.h"
 
 #define REQUIRED_PARAMS_NO 4
