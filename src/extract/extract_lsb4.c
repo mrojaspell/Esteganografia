@@ -33,14 +33,14 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path) {
     }
 
     // Get the hidden file size
-    uint8_t size_buffer[SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES)] = {0};
-    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES), p_file) <
-        SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES)) {
+    uint8_t size_buffer[SECRET_SIZE_IN_COVER_LSB4(FILE_LENGTH_BYTES)] = {0};
+    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER_LSB4(FILE_LENGTH_BYTES), p_file) <
+        SECRET_SIZE_IN_COVER_LSB4(FILE_LENGTH_BYTES)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
-    for (int i = 0; i < SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES); i++) {
+    for (int i = 0; i < SECRET_SIZE_IN_COVER_LSB4(FILE_LENGTH_BYTES); i++) {
         size = (size << 4) | (size_buffer[i] & 0x0F);
     }
 

@@ -1,56 +1,67 @@
-#include "embed_lsb4.h"
+#include "embed_lsbn.h"
 #include "get_file_size.h"
 #include "print_error.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
+#include <math.h>
+#include <stdlib.h>
 
-#define SIZE_BYTES_ENCODED SECRET_SIZE_IN_COVER_LSB4(SECRET_SIZE_BYTES)
 
-status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_path) {
+status_code embed_lsbn(unsigned char n, char * in_file_path, char * p_file_path, char * out_file_path){
     status_code exit_code = SUCCESS;
 
+    // Get IN file extension
     char extension[MAX_EXTENSION_SIZE] = {0};
-    const int extension_size = get_file_extension(in_file_path, extension);
+    const int in_extension_size = get_file_extension(in_file_path, extension);
+    // Get IN and P file sizes
+    off_t in_file_size = get_file_size(in_file_path);
+    off_t p_file_size = get_file_size(p_file_path);
 
-    const off_t in_file_size = get_file_size(in_file_path);
-    const off_t p_file_size = get_file_size(p_file_path);
-    if (in_file_size == -1 || p_file_size == -1) {
+    // Check for errors
+    if (in_extension_size == 0 || in_file_size == -1 || p_file_size == -1) {
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
 
-    // Since we are using lsb4, we use 4 bits of carrier per byte of secret, so the secret can be at most 1/2 of the carrier
-    if (in_file_size * 8/4 > (p_file_size - BMP_HEADER_SIZE - extension_size)) {
+
+    // (add 1 to account for \0 in extension)
+    const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + BMP_HEADER_SIZE + in_file_size + in_extension_size + 1;
+    
+    // Check if P file is big enough to embed IN file
+    if (p_file_size / BYTES_TO_EMBED_BYTE(n) < IN_PAYLOAD_SIZE) {
         // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
         exit_code = SECRET_TOO_BIG;
         goto finally;
     }
 
-    FILE* in_file = fopen(in_file_path, "r");
+
+    // Open IN file, read mode
+    FILE * in_file = fopen(in_file_path, "r");
     if (in_file == NULL) {
         print_error("Error al abrir el archivo a ocultar\n");
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
-
-    FILE* p_file = fopen(p_file_path, "r");
+    // Open P file, read mode
+    FILE * p_file = fopen(p_file_path, "r");
     if (p_file == NULL) {
         print_error("Error al abrir el archivo a bmp\n");
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
-
-    FILE* out_file = fopen(out_file_path, "w");
+    // Open OUT file, write mode
+    FILE * out_file = fopen(out_file_path, "w");
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
 
+    // Copy header from P file to OUT file
     unsigned char header[BMP_HEADER_SIZE];
     if (fread(header, 1, BMP_HEADER_SIZE, p_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_READ_ERROR;
@@ -59,35 +70,45 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
     if (fwrite(header, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
         exit_code = FILE_WRITE_ERROR;
         goto finally;
-    }
+    };
 
-    // Saving the secret file size
-    uint8_t file_size_buffer[SIZE_BYTES_ENCODED] = {0};
-    if (fread(file_size_buffer, 1, SIZE_BYTES_ENCODED, p_file) < SIZE_BYTES_ENCODED) {
+
+    int BYTES_TO_EMBED_SIZE = SECRET_SIZE_IN_COVER_LSBN(n);
+    // Get first P file bytes to embed size
+    uint8_t * file_size_buffer = calloc(BYTES_TO_EMBED_SIZE, sizeof(u_int8_t));
+    if (fread(file_size_buffer, 1, BYTES_TO_EMBED_SIZE, p_file) < BYTES_TO_EMBED_SIZE) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
-    for (int i = 0; i < SIZE_BYTES_ENCODED; i++) {
-        file_size_buffer[i] = (file_size_buffer[i] & 0xF0) | ((in_file_size >> (32 - (i + 1) * 4)) & 0x0F);
+    int P_MASK = 0xFF + 1 - pow(2, n);
+    int EMBED_MASK = 0xFF - P_MASK;
+    // Embed size to P bytes and save in buffer
+    for (int i = 0; i < BYTES_TO_EMBED_SIZE; i++) {
+        file_size_buffer[i] = (file_size_buffer[i] & P_MASK) | ((in_file_size >> (BYTES_TO_EMBED_SIZE - ((i + 1) * n))) & EMBED_MASK);
     }
 
-    if (fwrite(file_size_buffer, 1, SIZE_BYTES_ENCODED, out_file) < SIZE_BYTES_ENCODED) {
+    // Save buffer to OUT file
+    if (fwrite(file_size_buffer, 1, BYTES_TO_EMBED_SIZE, out_file) < BYTES_TO_EMBED_SIZE) {
         exit_code = FILE_WRITE_ERROR;
         goto finally;
     }
 
+
+    // copiar payload del bmp modificando el lsb con el in al archivo a ocultar
+    // cada bit de in va al lsb de un byte del bmp
+    // TODO: Optimize this, instead of reading byte by byte, use a buffer
     uint8_t in_byte;
     uint8_t p_byte;
     uint8_t out_byte;
 
     while (fread(&in_byte, 1, 1, in_file) == 1) {
-        for (int i = 8; i > 0; i = i - 4) {
+        for (int i = 8; i > 0; i -= n) {
             if (fread(&p_byte, 1, 1, p_file) < 1) {
                 exit_code = FILE_READ_ERROR;
                 goto finally;
             }
-            out_byte = (p_byte & 0xF0) | ((in_byte >> (i - 4)) & 0x0F);
+            out_byte = (p_byte & P_MASK) | ((in_byte >> (i - n)) & EMBED_MASK);
             if (fwrite(&out_byte, 1, 1, out_file) < 1) {
                 exit_code = FILE_WRITE_ERROR;
                 goto finally;
@@ -95,20 +116,19 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
         }
     }
 
-    // fread(in_file) failed for a reason other than EOF
     if (ferror(in_file)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
     // We use <= to also copy the '\0'
-    for (int i = 0; i <= extension_size; i++) {
-        for (int j = 8; j > 0; j -= 4) {
+    for (int i = 0; i <= in_extension_size; i++) {
+        for (int j = 8; j > 0; j -= n) {
             if (fread(&p_byte, 1, 1, p_file) < 1) {
                 exit_code = FILE_READ_ERROR;
                 goto finally;
             }
-            out_byte = (p_byte & 0xF0) | ((extension[i] >> (j - 4)) & 0x0F);
+            out_byte = (p_byte & P_MASK) | ((extension[i] >> (j-n)) & EMBED_MASK);
             if (fwrite(&out_byte, 1, 1, out_file) < 1) {
                 exit_code = FILE_WRITE_ERROR;
                 goto finally;
@@ -132,14 +152,20 @@ status_code embed_lsb4(char* in_file_path, char* p_file_path, char* out_file_pat
         goto finally;
     }
 
-
 finally:
-    if (in_file != NULL)
+    // Close resources
+    if (in_file != NULL) {
         fclose(in_file);
-    if (p_file != NULL)
+    }
+    if (p_file != NULL) {
         fclose(p_file);
-    if (out_file != NULL)
+    }
+    if (out_file != NULL) {
         fclose(out_file);
+    }
+    if (file_size_buffer != NULL) {
+        free(file_size_buffer);
+    }
 
     return exit_code;
 }

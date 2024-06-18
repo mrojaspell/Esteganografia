@@ -1,9 +1,8 @@
 #include "embed_lsb1.h"
-
-#include <errno.h>
-
 #include "get_file_size.h"
 #include "print_error.h"
+
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,17 +10,20 @@
 #define SIZE_BYTES_ENCODED SECRET_SIZE_IN_COVER_LSB1(SECRET_SIZE_BYTES)
 
 status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_path) {
-    off_t in_file_size = get_file_size(in_file_path);
-    off_t p_file_size = get_file_size(p_file_path);
     status_code exit_code = SUCCESS;
+
     char extension[MAX_EXTENSION_SIZE] = {0};
-
-    FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
-
     const int extension_size = get_file_extension(in_file_path, extension);
 
+    off_t in_file_size = get_file_size(in_file_path);
+    off_t p_file_size = get_file_size(p_file_path);
+    if (in_file_size == -1 || p_file_size == -1) {
+        exit_code = FILE_OPEN_ERROR;
+        goto finally;
+    }
+
     // queremos *8 porque es 1 bit por cada byte
-    if (in_file_size * 8 > (p_file_size - BMP_HEADER_SIZE - extension_size)) {
+    if (in_file_size * 8/1 > (p_file_size - BMP_HEADER_SIZE - extension_size)) {
         // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
         exit_code = SECRET_TOO_BIG;
@@ -29,21 +31,21 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
     }
 
     // abrimos archivos
-    in_file = fopen(in_file_path, "r");
+    FILE * in_file = fopen(in_file_path, "r");
     if (in_file == NULL) {
         print_error("Error al abrir el archivo a ocultar\n");
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
 
-    p_file = fopen(p_file_path, "r");
+    FILE * p_file = fopen(p_file_path, "r");
     if (p_file == NULL) {
         print_error("Error al abrir el archivo a bmp\n");
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
 
-    out_file = fopen(out_file_path, "w");
+    FILE * out_file = fopen(out_file_path, "w");
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
@@ -81,9 +83,10 @@ status_code embed_lsb1(char* in_file_path, char* p_file_path, char* out_file_pat
     // copiar payload del bmp modificando el lsb con el in al archivo a ocultar
     // cada bit de in va al lsb de un byte del bmp
     // TODO: Optimize this, instead of reading byte by byte, use a buffer
-    unsigned char in_byte;
-    unsigned char p_byte;
-    unsigned char out_byte;
+    uint8_t in_byte;
+    uint8_t p_byte;
+    uint8_t out_byte;
+
     while (fread(&in_byte, 1, 1, in_file) == 1) {
         for (int i = 8; i > 0; i--) {
             if (fread(&p_byte, 1, 1, p_file) < 1) {
