@@ -42,6 +42,9 @@
 *.idb
 *.pdb
 
+# BMP files
+*.bmp
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
