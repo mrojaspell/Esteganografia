@@ -56,7 +56,7 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
     // Open OUT file, write mode
-    out_file = fopen(out_file_path, "w");
+    out_file = fopen(out_file_path, "w"); // todo check what happens if file already exists
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
