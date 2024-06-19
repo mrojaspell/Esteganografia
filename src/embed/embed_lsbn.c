@@ -9,6 +9,14 @@
 #include <math.h>
 #include <stdlib.h>
 
+// Auxiliary functions
+status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, const unsigned int len);
+status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to);
+status_code embed_bytes_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, const uint8_t* bytes_to_embed,
+                             unsigned int len);
+status_code embed_file_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, FILE* in_file);
+status_code embed_number_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, unsigned int number_to_embed);
+
 
 status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path) {
     status_code exit_code = SUCCESS;
@@ -64,94 +72,27 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Copy header from P file to OUT file
-    unsigned char header[BMP_HEADER_SIZE];
-    if (fread(header, 1, BMP_HEADER_SIZE, p_file) < BMP_HEADER_SIZE) {
-        exit_code = FILE_READ_ERROR;
-        goto finally;
-    }
-    if (fwrite(header, 1, BMP_HEADER_SIZE, out_file) < BMP_HEADER_SIZE) {
-        exit_code = FILE_WRITE_ERROR;
-        goto finally;
-    };
-
-
-    int BYTES_TO_EMBED_SIZE = SECRET_SIZE_IN_COVER_LSBN(n);
-    // Get first P file bytes to embed size
-    file_size_buffer = calloc(BYTES_TO_EMBED_SIZE, sizeof(u_int8_t));
-    if (fread(file_size_buffer, 1, BYTES_TO_EMBED_SIZE, p_file) < BYTES_TO_EMBED_SIZE) {
-        exit_code = FILE_READ_ERROR;
+    if ((exit_code = copy_from_file_to_file(p_file, out_file, BMP_HEADER_SIZE)) != SUCCESS) {
         goto finally;
     }
 
-    const uint8_t P_MASK = 0xFF + 1 - pow(2, n);
-    const uint8_t EMBED_MASK = 0xFF - P_MASK;
-    // Embed size to P bytes and save in buffer
-    for (int i = 0; i < BYTES_TO_EMBED_SIZE; i++) {
-        const uint8_t offset = FILE_LENGTH_BITS - ((i + 1) * n);
-        file_size_buffer[i] = (file_size_buffer[i] & P_MASK) | ((in_file_size >> offset) & EMBED_MASK);
-    }
-
-    // Save buffer to OUT file
-    if (fwrite(file_size_buffer, 1, BYTES_TO_EMBED_SIZE, out_file) < BYTES_TO_EMBED_SIZE) {
-        exit_code = FILE_WRITE_ERROR;
+    // Embed in_file filesize in out_file
+    if ((exit_code = embed_number_lsbn(n, p_file, out_file, in_file_size)) != SUCCESS) {
         goto finally;
     }
 
-
-    // copiar payload del bmp modificando el lsb con el in al archivo a ocultar
-    // cada bit de in va al lsb de un byte del bmp
-    // TODO: Optimize this, instead of reading byte by byte, use a buffer
-    uint8_t in_byte;
-    uint8_t p_byte;
-    uint8_t out_byte;
-
-    while (fread(&in_byte, 1, 1, in_file) == 1) {
-        for (int i = 8; i > 0; i -= n) {
-            if (fread(&p_byte, 1, 1, p_file) < 1) {
-                exit_code = FILE_READ_ERROR;
-                goto finally;
-            }
-            out_byte = (p_byte & P_MASK) | ((in_byte >> (i - n)) & EMBED_MASK);
-            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
-                exit_code = FILE_WRITE_ERROR;
-                goto finally;
-            }
-        }
-    }
-
-    if (ferror(in_file)) {
-        exit_code = FILE_READ_ERROR;
+    // Embed in_file content in out_file
+    if ((exit_code = embed_file_lsbn(n, p_file, out_file, in_file)) != SUCCESS) {
         goto finally;
     }
 
-    // We use <= to also copy the '\0'
-    for (int i = 0; i <= in_extension_size; i++) {
-        for (int j = 8; j > 0; j -= n) {
-            if (fread(&p_byte, 1, 1, p_file) < 1) {
-                exit_code = FILE_READ_ERROR;
-                goto finally;
-            }
-            out_byte = (p_byte & P_MASK) | ((extension[i] >> (j - n)) & EMBED_MASK);
-            if (fwrite(&out_byte, 1, 1, out_file) < 1) {
-                exit_code = FILE_WRITE_ERROR;
-                goto finally;
-            }
-        }
+    // Embed in_file extension in out_file
+    if ((exit_code = embed_bytes_lsbn(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1)) != SUCCESS) {
+        goto finally;
     }
 
-    uint8_t buffer[BUFSIZ] = {0};
-    size_t read = 0;
-
-    while ((read = fread(buffer, 1, BUFSIZ, p_file)) > 0) {
-        if (fwrite(buffer, 1, read, out_file) < read) {
-            print_error(strerror(errno));
-            exit_code = FILE_WRITE_ERROR;
-            goto finally;
-        }
-    }
-
-    if (ferror(p_file)) {
-        exit_code = FILE_READ_ERROR;
+    // Copy the rest of p_file to out_file
+    if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
         goto finally;
     }
 
@@ -171,4 +112,126 @@ finally:
     }
 
     return exit_code;
+}
+
+
+// Copy len bytes from "copy_from" to "copy_to"
+status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, unsigned int len) {
+    status_code exit_code = SUCCESS;
+    uint8_t* buffer = malloc(len * sizeof(uint8_t));
+
+    if (fread(buffer, 1, len, copy_from) < len) {
+        exit_code = FILE_READ_ERROR;
+        goto finally;
+    }
+    if (fwrite(buffer, 1, len, copy_to) < len) {
+        exit_code = FILE_WRITE_ERROR;
+        goto finally;
+    };
+
+finally:
+    if (buffer != NULL)
+        free(buffer);
+    return exit_code;
+}
+
+status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to) {
+    uint8_t buffer[BUFSIZ] = {0};
+    size_t read = 0;
+
+    while ((read = fread(buffer, 1, BUFSIZ, copy_from)) > 0) {
+        if (fwrite(buffer, 1, read, copy_to) < read) {
+            print_error(strerror(errno));
+            return FILE_WRITE_ERROR;
+        }
+    }
+
+    if (ferror(copy_from)) {
+        return FILE_READ_ERROR;
+    }
+    return SUCCESS;
+}
+
+// Embed len bytes from in_file in p_file, and save it in out_file
+status_code embed_bytes_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, const uint8_t* bytes_to_embed,
+                             unsigned int len) {
+    status_code exit_code = SUCCESS;
+
+    // Calculate bytes needed from p_file to embed len bytes
+    unsigned int bytes_needed = BYTES_TO_EMBED_BYTE(n) * len;
+
+    // Copy the needed bytes from p_file to buffer
+    uint8_t* buffer = malloc(bytes_needed);
+    if (buffer == NULL) {
+        exit_code = MEMORY_ERROR;
+        goto finally;
+    }
+    if (fread(buffer, 1, bytes_needed, p_file) < bytes_needed) {
+        exit_code = FILE_READ_ERROR;
+        goto finally;
+    }
+
+    // Calculate the masks to do the embed
+    const uint8_t P_MASK = 0xFF + 1 - pow(2, n);
+    const uint8_t EMBED_MASK = 0xFF - P_MASK;
+
+
+    // Embed bytes to buffer
+    unsigned int it_buffer = 0;
+    for (int i = 0; i < len; i++) {
+        uint8_t byte_to_embed = bytes_to_embed[i];
+        for (int j = 0; j < BYTES_TO_EMBED_BYTE(n); j += 1) {
+            const uint8_t offset = 8 - ((j + 1) * n);
+            buffer[it_buffer] = ((buffer[it_buffer] & P_MASK) | ((byte_to_embed >> offset) & EMBED_MASK));
+            it_buffer++;
+        }
+    }
+
+
+    // Save buffer to OUT file
+    if (fwrite(buffer, 1, bytes_needed, out_file) < bytes_needed) {
+        exit_code = FILE_WRITE_ERROR;
+        goto finally;
+    }
+
+
+finally:
+    if (buffer != NULL)
+        free(buffer);
+    return exit_code;
+}
+
+status_code embed_file_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, FILE* in_file) {
+    status_code exit_code = SUCCESS;
+
+    uint8_t buffer[BUFSIZ];
+    unsigned int read_bytes;
+    while ((read_bytes = fread(buffer, 1, BUFSIZ, in_file)) > 0) {
+        // Error while reading the file
+        if (ferror(in_file))
+            return FILE_READ_ERROR;
+
+        exit_code = embed_bytes_lsbn(n, p_file, out_file, buffer, read_bytes);
+        if (exit_code != SUCCESS) {
+            return exit_code;
+        }
+    }
+
+    // If we couldn't finish reading the file
+    if (!feof(in_file))
+        return FILE_READ_ERROR;
+
+    return exit_code;
+}
+
+status_code embed_number_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, unsigned int number_to_embed) {
+    const uint8_t* original = (uint8_t*)&number_to_embed;
+    // Because we're making an array out of an 32bit number, endianess is kicking our ass
+    // So we decided to reverse the array manually, knowing that it's always size 4;
+    uint8_t array[4];
+    array[0] = original[3];
+    array[1] = original[2];
+    array[2] = original[1];
+    array[3] = original[0];
+    return embed_bytes_lsbn(n, p_file, out_file, (uint8_t*)array, 4);
 }
