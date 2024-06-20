@@ -1,6 +1,7 @@
 #include "embed_lsbn.h"
 #include "get_file_size.h"
 #include "print_error.h"
+#include "colors.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -18,7 +19,7 @@ status_code embed_file_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, 
 status_code embed_number_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, unsigned int number_to_embed);
 
 
-status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path) {
+status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
     uint8_t* file_size_buffer = NULL;
@@ -40,7 +41,7 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     // Check if P file is big enough to embed IN file
     // (add 1 to account for \0 in extension)
     const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
-    const int P_AVAILABLE_SIZE = (p_file_size - BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE(n);
+    const int P_AVAILABLE_SIZE = (p_file_size - BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n);
     if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
         // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
@@ -158,7 +159,7 @@ status_code embed_bytes_lsbn(const unsigned int n, FILE* p_file, FILE* out_file,
     status_code exit_code = SUCCESS;
 
     // Calculate bytes needed from p_file to embed len bytes
-    unsigned int bytes_needed = BYTES_TO_EMBED_BYTE(n) * len;
+    unsigned int bytes_needed = BYTES_TO_EMBED_BYTE_LSBI(n) * len;
 
     // Copy the needed bytes from p_file to buffer
     uint8_t* buffer = malloc(bytes_needed);
@@ -178,9 +179,19 @@ status_code embed_bytes_lsbn(const unsigned int n, FILE* p_file, FILE* out_file,
 
     // Embed bytes to buffer
     unsigned int it_buffer = 0;
+    color next_rgb_color = BLUE;
     for (int i = 0; i < len; i++) {
         uint8_t byte_to_embed = bytes_to_embed[i];
-        for (int j = 0; j < BYTES_TO_EMBED_BYTE(n); j += 1) {
+        for (int j = 0; j < BYTES_TO_EMBED_BYTE_LSBI(n); j += 1) {
+            // Save current color and update to next value
+            color current_rgb_color = next_rgb_color;
+            next_rgb_color = get_next_color(current_rgb_color);
+
+            // In LSBI we don't alter color RED
+            if (current_rgb_color == RED){
+                continue;
+            }
+            
             const uint8_t offset = 8 - ((j + 1) * n);
             buffer[it_buffer] = ((buffer[it_buffer] & P_MASK) | ((byte_to_embed >> offset) & EMBED_MASK));
             it_buffer++;
