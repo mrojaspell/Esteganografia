@@ -20,10 +20,19 @@ int main(int argc, char* argv[]) {
         return ILLEGAL_ARGUMENTS;
     }
 
+
+
+
+
+
+
     argv += 2;
     argc -= 2;
     int status = 0;
+
+
     if (mode == EMBED_MODE)
+
         status = embed(argc, argv);
     else if (mode == EXTRACT_MODE)
         status = extract(argc, argv);
