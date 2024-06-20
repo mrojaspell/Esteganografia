@@ -32,7 +32,6 @@ int main(int argc, char* argv[]) {
 
 
     if (mode == EMBED_MODE)
-
         status = embed(argc, argv);
     else if (mode == EXTRACT_MODE)
         status = extract(argc, argv);
