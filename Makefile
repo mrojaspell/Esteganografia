@@ -1,5 +1,5 @@
 CC=gcc
-CCFLAGS=-Wall -std=c99 -pedantic -lm
+CCFLAGS=-Wall -std=c99 -pedantic -lm -lssl -lcrypto
 DEBUGFLAGS=-g
 INCLUDE = -Isrc/include
 DIRS := src src/embed src/extract
