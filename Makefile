@@ -1,10 +1,10 @@
 CC=gcc
-CCFLAGS=-Wall -std=c99 -pedantic -lm -lssl -lcrypto
-DEBUGFLAGS=-g
-INCLUDE = -Isrc/include
+CFLAGS=-Wall -std=c99 -pedantic -g $(INCLUDE)
+LDFLAGS=-lm -lssl -lcrypto
+INCLUDE=-Isrc/include
 DIRS := src src/embed src/extract
 SOURCES := $(foreach dir, $(DIRS), $(wildcard $(dir)/*.c))
-OBJS = $(SRCS:.c=.o)
+OBJS := $(SOURCES:.c=.o)
 BIN_DIRECTORY=./bin
 BIN_FILE=./bin/stegobmp
 
@@ -12,14 +12,12 @@ all: $(BIN_FILE)
 
 $(BIN_FILE): $(OBJS)
 	@mkdir -p $(BIN_DIRECTORY)
-	@$(CC) $(CCFLAGS) $(DEBUGFLAGS) $(INCLUDE) $(SOURCES) -o $(BIN_FILE)
+	@$(CC) $(OBJS) $(LDFLAGS) -o $(BIN_FILE)
 
-# Rule to compile source files into object files
 %.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
-
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	@rm -rf $(BIN_DIRECTORY) $(OBJS)
 
-PHONY: clean all
+.PHONY: clean all
