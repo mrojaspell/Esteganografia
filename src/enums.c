@@ -35,7 +35,7 @@ encryption_alg get_encryption_alg(char *encryption_str)
         return AES256;
     else if (!strcmp(encryption_str, "DES"))
         return DES;
-    return UNSPECIFIED_ENC;
+    return AES128;
 }
 
 block_chaining_mode get_chaining_mode(char *chaining_str)
@@ -48,6 +48,5 @@ block_chaining_mode get_chaining_mode(char *chaining_str)
         return CFB;
     else if (!strcmp(chaining_str, "OFB"))
         return OFB;
-
-    return UNSPECIFIED_CHAIN;
+    return CBC;
 }

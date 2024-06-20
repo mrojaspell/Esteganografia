@@ -21,33 +21,25 @@ int initialize_password_metadata(password_metadata * password_metadata,encryptio
 {
     if (password_metadata->password == NULL)
     {
-        printf("Password cannot be null, must be provided");
-        return -1;
+        print_error("Password cannot be null, must be provided");
+        return INVALID_PASSWORD;
     }
-    if (encription_alg == UNSPECIFIED_ENC){
-        printf("Encryption mode unspecified");
-        return -1;
-    }
-    if (block_chaining_mode == UNSPECIFIED_CHAIN)
-    {
-        printf("Encryption chaining mode unspecified");
-        return -1;
-    }
+    
     password_metadata->cypher = cypher_strategies[encription_alg][block_chaining_mode];
 
     //initialize password initialization vector
     password_metadata->init_vector = malloc(BLOCK_SIZE[encription_alg]);
     if (password_metadata->init_vector == NULL)
     {
-        printf("Not enough memory to allocate iv");
-        return -1;
+        print_error("Not enough memory to allocate iv");
+        return MEMORY_ERROR;
     }
 
     password_metadata->key = malloc(KEY_SIZE[encription_alg]);
     if (password_metadata->key == NULL)
     {
-        printf("Not enough memory to allocate key");
-        return -1;
+        print_error("Not enough memory to allocate key");
+        return MEMORY_ERROR;
     }
 
     EVP_CIPHER * result = (password_metadata->cypher)();
@@ -58,7 +50,7 @@ int initialize_password_metadata(password_metadata * password_metadata,encryptio
     password_metadata->key,
     password_metadata->init_vector);
 
-
+    return SUCCESS;
 }
 
 
@@ -71,42 +63,41 @@ int initialize_password_metadata(password_metadata * password_metadata,encryptio
 int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len,uint8_t* encrypted_output,password_metadata * password_metadata)
 {
     EVP_CIPHER_CTX * ctx;
+    ctx = EVP_CIPHER_CTX_new();
 
-    if (!(ctx = EVP_CIPHER_CTX_new()))
+    if (!(ctx))
     {
-        printf("Could not instanciate cypher context");
-        return -1;
+        print_error("Could not generate cypher context");
+        return ENCRYPTION_ERROR;
     }
 
     EVP_CIPHER* result = (password_metadata->cypher)();
 
     if (EVP_EncryptInit_ex(ctx,result,NULL,password_metadata->key,password_metadata->init_vector) != 1)
     {
-        printf("Could not initialize encription");
+        print_error("Could not start encryption");
         EVP_CIPHER_CTX_free(ctx);
-        return -1;
+        return ENCRYPTION_ERROR;
     }
     int length;
     if (EVP_EncryptUpdate(ctx,encrypted_output,&length,decrypted_input,input_len) != 1)
     {
-        printf("Error during input encryption");
+        print_error("Error encrypting input");
         EVP_CIPHER_CTX_free(ctx);
-        return -1;
+        return ENCRYPTION_ERROR;
     }
     int cypher_length = length;
     
     if (EVP_EncryptFinal_ex(ctx,encrypted_output + cypher_length,&length))
     {
-        printf("Error during encryption");
+        print_error("Error finalizing encrypted input");
         EVP_CIPHER_CTX_free(ctx);
-        return -1;
+        return ENCRYPTION_ERROR;
     }
 
     cypher_length += length;
     EVP_CIPHER_CTX_free(ctx);
-
     return cypher_length;
-
 }
 
 

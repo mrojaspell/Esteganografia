@@ -1,6 +1,7 @@
 #include "embed_lsbn.h"
 #include "get_file_size.h"
 #include "print_error.h"
+#include "ssl_helpers.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -18,7 +19,7 @@ status_code embed_file_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, 
 status_code embed_number_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, unsigned int number_to_embed);
 
 
-status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path) {
+status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
     uint8_t* file_size_buffer = NULL;
@@ -48,6 +49,17 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
 
+    password_metadata password_metadata = {0};
+    if(password != 0) {
+        // tenemos password para encriptar
+        password_metadata.password = password;
+        int status = initialize_password_metadata(&password_metadata, encryption, chaining);
+        if(status != SUCCESS) {
+            print_error("Could not initialize password metadata");
+            exit_code = status;
+            goto finally;
+        }
+    }
 
     // Open IN file, read mode
     in_file = fopen(in_file_path, "r");
@@ -75,6 +87,8 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     if ((exit_code = copy_from_file_to_file(p_file, out_file, BMP_HEADER_SIZE)) != SUCCESS) {
         goto finally;
     }
+
+    //hacer tmp file y llamar a encrypt_payload
 
     // Embed in_file filesize in out_file
     if ((exit_code = embed_number_lsbn(n, p_file, out_file, in_file_size)) != SUCCESS) {

@@ -12,7 +12,11 @@ typedef enum status_code {
     FILE_READ_ERROR,
     FILE_WRITE_ERROR,
     SECRET_TOO_BIG,
-    MEMORY_ERROR
+    MEMORY_ERROR,
+    INVALID_ENC_MODE,
+    INVALID_ENC_CHAIN,
+    INVALID_PASSWORD,
+    ENCRYPTION_ERROR,
     // add more codes here
 } status_code;
 

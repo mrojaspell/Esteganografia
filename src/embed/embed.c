@@ -44,10 +44,12 @@ status_code embed(int argc, char* argv[]) {
 
     switch (params.steg) {
     case LSB1:
-        embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file);
+        embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
+                   params.password);
         break;
     case LSB4:
-        embed_lsbn(4, params.in_file, params.p_bitmap_file, params.out_bitmap_file);
+        embed_lsbn(4, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
+                   params.password);
         break;
     case LSBI:
         break;
@@ -96,11 +98,13 @@ status_code set_param_embed(struct params* params, char* arg_name, char* arg_val
     }
     else if (!strcmp(arg_name, "-a")) {
         params->encryption = get_encryption_alg(arg_value);
-        error_ocurred = (params->encryption == UNSPECIFIED_ENC);
+        //error_ocurred = (params->encryption == UNSPECIFIED_ENC);
+        // la linea de arriba esta mal?
     }
     else if (!strcmp(arg_name, "-m")) {
         params->chaining = get_chaining_mode(arg_value);
-        error_ocurred = (params->chaining == UNSPECIFIED_CHAIN);
+        //error_ocurred = (params->chaining == UNSPECIFIED_CHAIN);
+        // la linea de arriba esta mal?
     }
     else if (!strcmp(arg_name, "-pass")) {
         params->password = arg_value;
