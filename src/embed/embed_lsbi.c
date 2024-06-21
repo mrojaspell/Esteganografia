@@ -57,7 +57,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
     // Open OUT file, write mode
-    out_file = fopen(out_file_path, "w"); // todo check what happens if file already exists
+    out_file = fopen(out_file_path, "w"); // TODO: check what happens if file already exists
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
@@ -65,7 +65,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Copy header from P file to OUT file
-    if ((exit_code = copy_from_file_to_file(p_file, out_file, BMP_HEADER_SIZE)) != SUCCESS) { // todo account for variable header size
+    if ((exit_code = copy_from_file_to_file(p_file, out_file, BMP_HEADER_SIZE)) != SUCCESS) { // TODO: account for variable header size
         goto finally;
     }
 
