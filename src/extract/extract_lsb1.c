@@ -29,9 +29,7 @@ status_code extract_lsb1(const char* p_bmp, const char* out_file_path) {
     }
 
     // Skip header
-    if (fseek(p_file, BMP_HEADER_SIZE, SEEK_SET)) {
-        print_error(strerror(errno));
-        exit_code = FILE_READ_ERROR;
+    if ((exit_code = skip_bmp_header(p_file)) != SUCCESS) {
         goto finally;
     }
 
