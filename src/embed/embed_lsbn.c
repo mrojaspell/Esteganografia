@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 // Auxiliary functions
-status_code copy_bmp_header_file_to_file(FILE *copy_from, FILE* copy_to);
+status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to);
 status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, const unsigned int len);
 status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to);
 status_code embed_bytes_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, const uint8_t* bytes_to_embed,
@@ -20,7 +20,8 @@ status_code embed_file_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, 
 status_code embed_number_lsbn(const unsigned int n, FILE* p_file, FILE* out_file, unsigned int number_to_embed);
 
 
-status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
+status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path,
+                       encryption_alg encryption, block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
     uint8_t* file_size_buffer = NULL;
@@ -31,6 +32,11 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     // Get IN and P file sizes
     off_t in_file_size = get_file_size(in_file_path);
     off_t p_file_size = get_file_size(p_file_path);
+
+    if (in_file_size > UINT32_MAX) {
+        exit_code = SECRET_TOO_BIG;
+        goto finally;
+    }
 
     // Check for errors
     if (in_extension_size == 0 || in_file_size == -1 || p_file_size == -1) {
@@ -51,11 +57,11 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     password_metadata password_metadata = {0};
-    if(password != 0) {
+    if (password != 0) {
         // tenemos password para encriptar
         password_metadata.password = password;
         int status = initialize_password_metadata(&password_metadata, encryption, chaining);
-        if(status != SUCCESS) {
+        if (status != SUCCESS) {
             print_error("Could not initialize password metadata");
             exit_code = status;
             goto finally;
@@ -91,57 +97,48 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
 
     //hacer tmp file y llamar a encrypt_payload
     int encrypted_size = 0;
-    uint8_t * encrypted_output = NULL;
-    uint8_t * plaintext_input = NULL;
+    uint8_t* encrypted_output = NULL;
+    uint32_t encrypted_output_size = 0;
+    uint8_t* plaintext_input = NULL;
     // guardar en plaintext_input el contenido del archivo a ocultar (in_file), su tamaño y la extension
-    
 
-    if(password != 0) {
+
+    if (password != 0) {
         //asignar memorias
-        encrypted_output = malloc(in_file_size + sizeof(in_file_size) + in_extension_size + 1);
-        if(encrypted_output == NULL) {
-            exit_code = MEMORY_ERROR;
-            goto finally;
-        }
         plaintext_input = malloc(in_file_size + sizeof(in_file_size) + in_extension_size + 1);
-        if(plaintext_input == NULL) {
+        if (plaintext_input == NULL) {
             exit_code = MEMORY_ERROR;
             goto finally;
         }
 
 
         // escribir el tamaño en plaintext_input
-        memcpy(plaintext_input, &in_file_size, sizeof(in_file_size));
+        memcpy(plaintext_input, &in_file_size, sizeof(uint32_t));
         // escribir el archivo original (in_file) en plaintext_input
-        if(fread(plaintext_input + sizeof(in_file_size), 1, in_file_size, in_file) < in_file_size) {
+        if (fread(plaintext_input + sizeof(uint32_t), 1, in_file_size, in_file) < in_file_size) {
             exit_code = FILE_READ_ERROR;
             goto finally;
         }
         // escribir la extension en plaintext_input
-        memcpy(plaintext_input + sizeof(in_file_size) + in_file_size, extension, in_extension_size + 1);
-        
-        // encriptar el contenido de plaintext_input en encrypted_output
-        encrypted_size = encrypt_payload(plaintext_input, in_file_size + sizeof(in_file_size) + in_extension_size + 1, encrypted_output, &password_metadata);
+        memcpy(plaintext_input + sizeof(uint32_t) + in_file_size, extension, in_extension_size + 1);
 
-        // escribir en un archivo temporal el tamaño del cifrado || la encripcion
-        FILE * tmp_file = tmpfile();
-        if(tmp_file == NULL) {
-            exit_code = FILE_OPEN_ERROR;
-            goto finally;
-        }
-        if(fwrite(encrypted_output, 1, encrypted_size, tmp_file) < encrypted_size) {
-            exit_code = FILE_WRITE_ERROR;
-            goto finally;
-        }
+        // encriptar el contenido de plaintext_input en encrypted_output
+        encrypted_size = encrypt_payload(plaintext_input, in_file_size + sizeof(uint32_t) + in_extension_size + 1,
+                                         &encrypted_output, &encrypted_output_size, &password_metadata);
+
         // escribir el tamaño del cifrado en el archivo de salida
-        if((exit_code = embed_number_lsbn(n, p_file, out_file, encrypted_size)) != SUCCESS) {
+        if ((exit_code = embed_number_lsbn(n, p_file, out_file, encrypted_size)) != SUCCESS) {
             goto finally;
         }
-        if((exit_code = embed_file_lsbn(n, p_file, out_file, tmp_file)) != SUCCESS) {
+        if ((exit_code = embed_bytes_lsbn(n, p_file, out_file, encrypted_output, encrypted_output_size)) != SUCCESS) {
             goto finally;
         }
-        fclose(tmp_file);
-    } else {
+
+        if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
+            goto finally;
+        }
+    }
+    else {
         // Embed in_file filesize in out_file
         if ((exit_code = embed_number_lsbn(n, p_file, out_file, in_file_size)) != SUCCESS) {
             goto finally;
@@ -153,7 +150,8 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
         }
 
         // Embed in_file extension in out_file
-        if ((exit_code = embed_bytes_lsbn(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1)) != SUCCESS) {
+        if ((exit_code = embed_bytes_lsbn(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1)) !=
+            SUCCESS) {
             goto finally;
         }
 
@@ -177,10 +175,10 @@ finally:
     if (file_size_buffer != NULL) {
         free(file_size_buffer);
     }
-    if(encrypted_output != NULL) {
+    if (encrypted_output != NULL) {
         free(encrypted_output);
     }
-    if(plaintext_input != NULL) {
+    if (plaintext_input != NULL) {
         free(plaintext_input);
     }
 

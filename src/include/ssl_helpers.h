@@ -23,5 +23,5 @@ typedef struct password_metadata
 
 int initialize_password_metadata(password_metadata * password_metadata,encryption_alg encription_alg, block_chaining_mode block_chaining_mode);
 int decrypt_payload(uint8_t * encrypted_input, uint32_t encrypted_length, uint8_t * decrypted_out,password_metadata * password_metadata);
-int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len,uint8_t* encrypted_output,password_metadata * password_metadata);
+int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len, uint8_t** encrypted_output, uint32_t *output_size, password_metadata * password_metadata);
 #endif

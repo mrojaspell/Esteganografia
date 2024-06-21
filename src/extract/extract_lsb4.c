@@ -8,16 +8,17 @@
 #include <stdlib.h>
 
 // hidden as (real size (4 bytes total) || data || file extension (eg: .txt\0))
-status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
+status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryption_alg encryption,
+                         block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     uint32_t size = 0;
     FILE *p_file = NULL, *out_file = NULL;
-    uint8_t *out_buffer = NULL, *in_buffer = NULL;
+    uint8_t *out_buffer = NULL, *in_buffer = NULL, *decrypted_output = NULL;
 
     p_file = fopen(p_bmp, "r");
     if (p_file == NULL) {
         exit_code = FILE_OPEN_ERROR;
-        printf("%s\n",p_bmp);
+        printf("%s\n", p_bmp);
         printf("error con bmp\n");
         goto finally;
     }
@@ -73,26 +74,36 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryptio
         out_buffer[out_iterator] = byte;
     }
 
-        uint32_t true_size = size;
-
     password_metadata password_metadata = {0};
-    if(password != 0) {
+
+    if (password != 0) {
+        uint32_t true_size = 0;
         password_metadata.password = password;
         exit_code = initialize_password_metadata(&password_metadata, encryption, chaining);
         if (exit_code != SUCCESS) {
             goto finally;
         }
 
-        uint8_t * decrypted_output = malloc(size);
-        if (decrypt_payload(out_buffer, size, decrypted_output, &password_metadata) != SUCCESS) {
-            exit_code = 1;
+        decrypted_output = malloc(size);
+        if (decrypted_output == NULL) {
+            exit_code = MEMORY_ERROR;
             goto finally;
         }
-        true_size = *((uint32_t *) decrypted_output);
-        decrypted_output = decrypted_output+4;
+        if (decrypt_payload(out_buffer, size, decrypted_output, &password_metadata) == -1) {
+            exit_code = ENCRYPTION_ERROR;
+            goto finally;
+        }
+        true_size = *((uint32_t*)decrypted_output);
+        const uint8_t *output_without_size = decrypted_output + 4;
+
+        if (fwrite(output_without_size, 1, true_size, out_file) < true_size) {
+            exit_code = FILE_WRITE_ERROR;
+        }
+
+        goto finally;
     }
 
-    if (fwrite(out_buffer, 1, true_size, out_file) < size) {
+    if (fwrite(out_buffer, 1, size, out_file) < size) {
         exit_code = FILE_WRITE_ERROR;
     }
 
@@ -105,6 +116,8 @@ finally:
         free(out_buffer);
     if (in_buffer != NULL)
         free(in_buffer);
+    if (decrypted_output != NULL)
+        free(decrypted_output);
 
     return exit_code;
 }
