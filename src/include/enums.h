@@ -25,7 +25,7 @@ typedef enum encryption_alg {
     AES192,
     AES256,
     DES,
-    //UNSPECIFIED_ENC
+    UNSPECIFIED_ENC
 } encryption_alg;
 encryption_alg get_encryption_alg(char * encryption_str);
 
@@ -35,7 +35,7 @@ typedef enum block_chaining_mode {
     ECB,
     CFB,
     OFB,
-    //UNSPECIFIED_CHAIN
+    UNSPECIFIED_CHAIN
 } block_chaining_mode;
 block_chaining_mode get_chaining_mode(char * chaining_str);
 
