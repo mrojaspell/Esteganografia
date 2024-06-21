@@ -40,13 +40,13 @@ status_code extract(int argc, char *argv[])
         return status;
     }
 
-    switch (params.steg)
+        switch (params.steg)
     {
     case LSB1:
-        extract_lsb1(params.p_bitmap_file, params.out_bitmap_file);
+        status = extract_lsb1(params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining, params.password);
         break;
     case LSB4:
-        extract_lsb4(params.p_bitmap_file, params.out_bitmap_file);
+        status = extract_lsb4(params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining, params.password);
         break;
     case LSBI:
         break;
@@ -54,7 +54,7 @@ status_code extract(int argc, char *argv[])
         return INVALID_STEG_ALG;
     }
 
-    return SUCCESS;
+    return status;
 }
 
 status_code set_params_extract(struct params *params, int argc, char *argv[])

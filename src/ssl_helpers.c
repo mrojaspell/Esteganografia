@@ -9,6 +9,10 @@
 
 int KEY_SIZE[] = {16, 24, 32, 8};
 int BLOCK_SIZE[] = {16, 16, 16, 8};
+cypher_strategy cypher_strategies[4][4] = {{EVP_aes_128_cbc, EVP_aes_128_ecb, EVP_aes_128_cfb, EVP_aes_128_ofb},
+                                     {EVP_aes_192_cbc, EVP_aes_192_ecb, EVP_aes_192_cfb, EVP_aes_192_ofb},
+                                     {EVP_aes_256_cbc, EVP_aes_256_ecb, EVP_aes_256_cfb, EVP_aes_256_ofb},
+                                     {EVP_des_cbc, EVP_des_ecb, EVP_des_cfb, EVP_des_ofb}};
 
 
 
@@ -60,7 +64,7 @@ int initialize_password_metadata(password_metadata * password_metadata,encryptio
 /// @param encrypted_output text to output
 /// @param password_metadata metadata relevant for encription
 /// @return lenght of cyphered text
-int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len,uint8_t* encrypted_output,password_metadata * password_metadata)
+int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len, uint8_t* encrypted_output, password_metadata * password_metadata)
 {
     EVP_CIPHER_CTX * ctx;
     ctx = EVP_CIPHER_CTX_new();
@@ -73,14 +77,14 @@ int encrypt_payload(uint8_t * decrypted_input, uint32_t input_len,uint8_t* encry
 
     EVP_CIPHER* result = (password_metadata->cypher)();
 
-    if (EVP_EncryptInit_ex(ctx,result,NULL,password_metadata->key,password_metadata->init_vector) != 1)
+    if (EVP_EncryptInit_ex(ctx, result, NULL, password_metadata->key, password_metadata->init_vector) != 1)
     {
         print_error("Could not start encryption");
         EVP_CIPHER_CTX_free(ctx);
         return ENCRYPTION_ERROR;
     }
     int length;
-    if (EVP_EncryptUpdate(ctx,encrypted_output,&length,decrypted_input,input_len) != 1)
+    if (EVP_EncryptUpdate(ctx, encrypted_output, &length, decrypted_input, input_len) != 1)
     {
         print_error("Error encrypting input");
         EVP_CIPHER_CTX_free(ctx);
@@ -141,6 +145,4 @@ int decrypt_payload(uint8_t * encrypted_input, uint32_t encrypted_length, uint8_
     decrypted_length +=  lenght;
     EVP_CIPHER_CTX_free(ctx);
     return decrypted_length;
-
-
 }

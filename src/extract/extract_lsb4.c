@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 // hidden as (real size (4 bytes total) || data || file extension (eg: .txt\0))
-status_code extract_lsb4(const char* p_bmp, const char* out_file_path) {
+status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
     status_code exit_code = SUCCESS;
     uint32_t size = 0;
     FILE *p_file = NULL, *out_file = NULL;
@@ -17,11 +17,14 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path) {
     p_file = fopen(p_bmp, "r");
     if (p_file == NULL) {
         exit_code = FILE_OPEN_ERROR;
+        printf("%s\n",p_bmp);
+        printf("error con bmp\n");
         goto finally;
     }
     out_file = fopen(out_file_path, "w");
     if (out_file == NULL) {
         exit_code = FILE_OPEN_ERROR;
+        printf("error con out\n");
         goto finally;
     }
 
@@ -70,7 +73,26 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path) {
         out_buffer[out_iterator] = byte;
     }
 
-    if (fwrite(out_buffer, 1, size, out_file) < size) {
+        uint32_t true_size = size;
+
+    password_metadata password_metadata = {0};
+    if(password != 0) {
+        password_metadata.password = password;
+        exit_code = initialize_password_metadata(&password_metadata, encryption, chaining);
+        if (exit_code != SUCCESS) {
+            goto finally;
+        }
+
+        uint8_t * decrypted_output = malloc(size);
+        if (decrypt_payload(out_buffer, size, decrypted_output, &password_metadata) != SUCCESS) {
+            exit_code = 1;
+            goto finally;
+        }
+        true_size = *((uint32_t *) decrypted_output);
+        decrypted_output = decrypted_output+4;
+    }
+
+    if (fwrite(out_buffer, 1, true_size, out_file) < size) {
         exit_code = FILE_WRITE_ERROR;
     }
 

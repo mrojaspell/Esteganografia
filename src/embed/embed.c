@@ -41,7 +41,7 @@ status_code embed(int argc, char* argv[]) {
         return status;
     }
 
-
+    
     switch (params.steg) {
     case LSB1:
         embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,

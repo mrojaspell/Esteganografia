@@ -19,17 +19,9 @@ int main(int argc, char* argv[]) {
         print_error("Incorrect program mode. It should be either -embed or -extract.\n");
         return ILLEGAL_ARGUMENTS;
     }
-
-
-
-
-
-
-
     argv += 2;
     argc -= 2;
     int status = 0;
-
 
     if (mode == EMBED_MODE)
 
@@ -37,5 +29,6 @@ int main(int argc, char* argv[]) {
     else if (mode == EXTRACT_MODE)
         status = extract(argc, argv);
 
+    printf("%d\n", status);
     return status;
 }
