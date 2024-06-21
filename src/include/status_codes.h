@@ -17,6 +17,7 @@ typedef enum status_code {
     INVALID_ENC_CHAIN,
     INVALID_PASSWORD,
     ENCRYPTION_ERROR,
+    KEY_DERIVATION_ERROR
     // add more codes here
 } status_code;
 
