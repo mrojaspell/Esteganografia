@@ -5,8 +5,8 @@
 color get_next_color(color current_rgb_color){
     if (current_rgb_color == BLUE)
         return GREEN;
-    if (current_rgb_color == GREEN)
+    else if (current_rgb_color == GREEN)
         return RED;
-    if (current_rgb_color == RED)
+    else // (current_rgb_color == RED)
         return BLUE;
 }
