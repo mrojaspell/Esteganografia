@@ -1,4 +1,5 @@
 #include "lsbi_count.h"
+#include "colors.h"
 
 #include <stdio.h>
 #include "get_file_size.h"
@@ -28,7 +29,7 @@ status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_coun
 
     uint8_t p_byte, out_byte;
     // BMP files save data in BGR format, and in LSBI we need to skip the red byte
-    int byte_count = 1;
+    color current_rgb_color = BLUE;
     while (fread(&p_byte, 1, 1, p_file) == 1) {
         if (ferror(p_file)) {
             exit_code = FILE_READ_ERROR;
@@ -41,16 +42,15 @@ status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_coun
         }
 
         // Skip bytes used for red pixels
-        if (byte_count % 3 == 0) {
-            byte_count = 1;
+        color past_color = current_rgb_color;
+        current_rgb_color = get_next_color(current_rgb_color);
+        if (past_color == RED) {
             continue;
         }
 
-        byte_count++;
-
-        const uint8_t pattern = (p_byte >> 1) & 3; // 3 is 0b11
+        const uint8_t pattern = (p_byte >> 1) & 3; // PATTERN: 2nd and 3rd last bit of the byte (3 is 0b11)
         count[pattern].total++;
-        if ((p_byte & 0x01) != (out_byte & 0x01)) {
+        if ((p_byte & 0x01) != (out_byte & 0x01)) { // Check if the last bit in p_byte and out_byte are different
             count[pattern].changed++;
         }
     }
