@@ -19,14 +19,11 @@
 
 // The number of bytes needed to embed a byte in LSBN
 // TODO: rename to BYTES_TO_EMBED_BYTE_LSBN
-#define BYTES_TO_EMBED_BYTE(n) (8/n)
+#define BYTES_TO_EMBED_BYTE_LSBN(n) (8/n)
 
 // The number of bytes needed to embed a byte in LSBI
 // We divide by 2/3 because we are using 2 colors (BLUE and GREEN) of 3 in RGB
-#define BYTES_TO_EMBED_BYTE_LSBI(n) ((BYTES_TO_EMBED_BYTE(n) * 3) / 2)
-
-// The number of bytes in P necessary to embed IN file size
-#define SECRET_SIZE_IN_COVER_LSBN(n) (FILE_LENGTH_BYTES * BYTES_TO_EMBED_BYTE(n))
+#define BYTES_TO_EMBED_BYTE_LSBI(n) ((BYTES_TO_EMBED_BYTE_LSBN(n) * 3) / 2)
 
 
 // Get the size of a file in bytes, using the stat system call
