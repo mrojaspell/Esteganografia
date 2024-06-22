@@ -3,8 +3,6 @@
 #include "get_file_size.h"
 #include "print_error.h"
 #include "ssl_helpers.h"
-#include "colors.h"
-#include "ssl_helpers.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -16,7 +14,6 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
                        encryption_alg encryption, block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
-    uint8_t* file_size_buffer = NULL;
 
     // Get IN file extension
     char extension[MAX_EXTENSION_SIZE] = {0};
@@ -24,6 +21,11 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     // Get IN and P file sizes
     off_t in_file_size = get_file_size(in_file_path);
     off_t p_file_size = get_file_size(p_file_path);
+
+    int encrypted_size = 0;
+    uint8_t* encrypted_output = NULL;
+    uint32_t encrypted_output_size = 0;
+    uint8_t* plaintext_input = NULL;
 
     if (in_file_size > UINT32_MAX) {
         exit_code = SECRET_TOO_BIG;
@@ -87,12 +89,6 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
 
-    //hacer tmp file y llamar a encrypt_payload
-    int encrypted_size = 0;
-    uint8_t* encrypted_output = NULL;
-    uint32_t encrypted_output_size = 0;
-    uint8_t* plaintext_input = NULL;
-    // guardar en plaintext_input el contenido del archivo a ocultar (in_file), su tamaño y la extension
 
 
     if (password != NULL) {
@@ -163,9 +159,6 @@ finally:
     }
     if (out_file != NULL) {
         fclose(out_file);
-    }
-    if (file_size_buffer != NULL) {
-        free(file_size_buffer);
     }
     if (encrypted_output != NULL) {
         free(encrypted_output);
