@@ -1,8 +1,9 @@
 #include "lsbi_count.h"
 #include "colors.h"
+#include "get_file_size.h"
+#include "bit_operations.h"
 
 #include <stdio.h>
-#include "get_file_size.h"
 
 status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_count count[4]) {
     status_code exit_code = SUCCESS;
@@ -12,9 +13,11 @@ status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_coun
     for (int i = 0; i < 4; i++) {
         count[i].changed = 0;
         count[i].total = 0;
+        count[i].should_invert = false;
     }
 
     // TODO: Skip headers using functions in ssldevelopment branch
+    // TODO: maybe modularize a function that skips the header and LSBI pattern?
 
     // Skip LSBI pattern
     if (fseek(p_file, 4, SEEK_CUR)) {
@@ -48,17 +51,30 @@ status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_coun
             continue;
         }
 
-        const uint8_t pattern = (p_byte >> 1) & 3; // PATTERN: 2nd and 3rd last bit of the byte (3 is 0b11)
+        uint8_t pattern;
+        if ((exit_code = get_LSBI_pattern(out_file, &pattern)) != SUCCESS){
+            goto finally;
+        }
+        
         count[pattern].total++;
         if ((p_byte & 0x01) != (out_byte & 0x01)) { // Check if the last bit in p_byte and out_byte are different
             count[pattern].changed++;
         }
     }
 
+    // Check for errors in file read
     if (!feof(p_file) || !feof(out_file)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
+
+    // Set should_invert to true when necessary
+    for (int i = 0; i < 4; i++){
+        int not_changed = count[i].total - count[i].changed;
+        if(count[i].changed > not_changed)
+            count[i].should_invert = true;
+    }
+    
 
 finally:
     return exit_code;

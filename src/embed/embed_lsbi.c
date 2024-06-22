@@ -3,6 +3,7 @@
 #include "get_file_size.h"
 #include "print_error.h"
 #include "colors.h"
+#include "lsbi_invert_patterns.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -95,6 +96,11 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
 
     // Copy the rest of p_file to out_file
     if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
+        goto finally;
+    }
+
+    // Apply the bit inversion algorithm
+    if ((exit_code = lsbi_invert_patterns(p_file, out_file)) != SUCCESS) {
         goto finally;
     }
 

@@ -18,7 +18,6 @@
 #define SECRET_SIZE_IN_COVER_LSB4(X) (X*2)
 
 // The number of bytes needed to embed a byte in LSBN
-// TODO: rename to BYTES_TO_EMBED_BYTE_LSBN
 #define BYTES_TO_EMBED_BYTE_LSBN(n) (8/n)
 
 // The number of bytes needed to embed a byte in LSBI
