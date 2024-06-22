@@ -1,3 +1,4 @@
+#include "embed_lsbi.h"
 #include "embed_lsbn.h"
 #include "embed_utils.h"
 #include "get_file_size.h"
@@ -13,7 +14,8 @@
 #include <stdlib.h>
 
 
-status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path) {
+status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, char* out_file_path,
+                       encryption_alg encryption, block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
     uint8_t* file_size_buffer = NULL;
@@ -28,24 +30,6 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     // Check for errors
     if (in_extension_size == 0 || in_file_size == -1 || p_file_size == -1) {
         exit_code = FILE_OPEN_ERROR;
-        goto finally;
-    }
-
-    // Retrieve BMP header size for P_FILE
-    uint32_t P_BMP_HEADER_SIZE;
-    if ((exit_code = get_bmp_header_size(p_file, &P_BMP_HEADER_SIZE)) != SUCCESS){
-        goto finally;
-    }
-
-
-    // Check if P file is big enough to embed IN file
-    // (add 1 to account for \0 in extension)
-    const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
-    const int P_AVAILABLE_SIZE = (p_file_size - P_BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n);
-    if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
-        // TODO: Show maximum secret size for bmp
-        print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
-        exit_code = SECRET_TOO_BIG;
         goto finally;
     }
 
@@ -68,6 +52,23 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
+        goto finally;
+    }
+
+    // Retrieve BMP header size for P_FILE
+    uint32_t P_BMP_HEADER_SIZE;
+    if ((exit_code = get_bmp_header_size(p_file, &P_BMP_HEADER_SIZE)) != SUCCESS) {
+        goto finally;
+    }
+
+    // Check if P file is big enough to embed IN file
+    // (add 1 to account for \0 in extension)
+    const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
+    const int P_AVAILABLE_SIZE = (p_file_size - P_BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n);
+    if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
+        // TODO: Show maximum secret size for bmp
+        print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
+        exit_code = SECRET_TOO_BIG;
         goto finally;
     }
 
@@ -96,7 +97,8 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Embed in_file extension in out_file
-    if ((exit_code = embed_bytes_lsbni(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1, true, &current_color)) != SUCCESS) {
+    if ((exit_code = embed_bytes_lsbni(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1, true,
+                                       &current_color)) != SUCCESS) {
         goto finally;
     }
 
@@ -106,7 +108,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Apply the bit inversion algorithm
-    if ((exit_code = lsbi_invert_patterns(p_file, out_file)) != SUCCESS) {
+    if ((exit_code = lsbi_invert_patterns(p_file, out_file, in_file_size)) != SUCCESS) {
         goto finally;
     }
 
@@ -127,5 +129,3 @@ finally:
 
     return exit_code;
 }
-
-

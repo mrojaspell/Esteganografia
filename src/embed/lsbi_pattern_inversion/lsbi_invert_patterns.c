@@ -7,11 +7,11 @@
 #include "bit_operations.h"
 #include "get_file_size.h"
 
-status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
+status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file, uint32_t in_file_size){
     status_code exit_code = SUCCESS;
 
     LSBI_count pattern_count[4];
-    if ((exit_code = count_lsbi_changes_embedding(p_file, out_file, pattern_count)) != SUCCESS){
+    if ((exit_code = count_lsbi_changes_embedding(p_file, out_file, pattern_count, in_file_size)) != SUCCESS){
         goto finally;
     }
 
@@ -32,7 +32,7 @@ status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
     uint8_t p_byte;
     // BMP files save data in BGR format, and in LSBI we need to skip the red byte
     color current_rgb_color = BLUE;
-    while (fread(&p_byte, 1, 1, p_file) == 1) {
+    while (fread(&p_byte, 1, 1, out_file) == 1 && in_file_size > 0) {
         if (ferror(p_file)) {
             exit_code = FILE_READ_ERROR;
             goto finally;
@@ -44,6 +44,7 @@ status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
         if (past_color == RED) {
             continue;
         }
+        in_file_size--;
 
         uint8_t pattern;
         if ((exit_code = get_LSBI_pattern(out_file, &pattern)) != SUCCESS){
@@ -59,7 +60,7 @@ status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
     }
 
     // Check for errors in file read
-    if (!feof(p_file) || !feof(out_file)) {
+    if (ferror(p_file) || ferror(out_file)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }

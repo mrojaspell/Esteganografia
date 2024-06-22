@@ -30,9 +30,9 @@ status_code set_last_bit(FILE * file, bool bit){
     }
     // Produce the modified byte (bit is either 0x00 or 0x01)
     if (bit){
-        read_byte = (bool)(read_byte | 0x01);
+        read_byte = read_byte | 0x01;
     } else {
-        read_byte = (bool)(read_byte & 0xFE);
+        read_byte = read_byte & 0xFE;
     }
     // Go back 1 byte
     fseek(file, -1, SEEK_CUR);

@@ -9,6 +9,7 @@
 #include "print_error.h"
 #include "status_codes.h"
 #include "embed_lsbn.h"
+#include "embed_lsbi.h"
 
 #define REQUIRED_PARAMS_NO 4
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -44,21 +45,22 @@ status_code embed(int argc, char* argv[]) {
     
     switch (params.steg) {
     case LSB1:
-        embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
+        status = embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
                    params.password);
         break;
     case LSB4:
-        embed_lsbn(4, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
+        status = embed_lsbn(4, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
                    params.password);
         break;
     case LSBI:
+        status = embed_lsbi(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining, params.password);
         break;
     default:
         return INVALID_STEG_ALG;
     }
 
 
-    return SUCCESS;
+    return status;
 }
 
 status_code set_params_embed(struct params* params, int argc, char* argv[]) {
