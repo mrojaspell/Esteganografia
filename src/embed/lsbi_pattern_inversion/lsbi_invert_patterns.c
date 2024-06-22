@@ -5,6 +5,7 @@
 #include "colors.h"
 #include "embed_utils.h"
 #include "bit_operations.h"
+#include "get_file_size.h"
 
 status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
     status_code exit_code = SUCCESS;
@@ -16,7 +17,10 @@ status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
 
     rewind(out_file);
 
-    // TODO: skip BMP header
+    // Skip BMP header in OUT_FILE
+    if ((exit_code = skip_bmp_header(out_file)) != SUCCESS){
+        goto finally;
+    }
 
     // Embed if we inverted the patterns or not
     for (int i = 0; i < 4; i++){
@@ -24,7 +28,6 @@ status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file){
             goto finally;
         }
     }
-    
 
     uint8_t p_byte;
     // BMP files save data in BGR format, and in LSBI we need to skip the red byte

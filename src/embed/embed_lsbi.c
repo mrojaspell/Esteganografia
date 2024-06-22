@@ -31,11 +31,17 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
 
+    // Retrieve BMP header size for P_FILE
+    uint32_t P_BMP_HEADER_SIZE;
+    if ((exit_code = get_bmp_header_size(p_file, &P_BMP_HEADER_SIZE)) != SUCCESS){
+        goto finally;
+    }
+
 
     // Check if P file is big enough to embed IN file
     // (add 1 to account for \0 in extension)
     const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
-    const int P_AVAILABLE_SIZE = (p_file_size - BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n); // TODO: account for variable header sizes
+    const int P_AVAILABLE_SIZE = (p_file_size - P_BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n);
     if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
         // TODO: Show maximum secret size for bmp
         print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
@@ -58,7 +64,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
     // Open OUT file, write mode
-    out_file = fopen(out_file_path, "w"); // TODO: check what happens if file already exists
+    out_file = fopen(out_file_path, "w+");
     if (out_file == NULL) {
         print_error("Error al abrir el archivo de salida\n");
         exit_code = FILE_OPEN_ERROR;
@@ -66,7 +72,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Copy header from P file to OUT file
-    if ((exit_code = copy_from_file_to_file(p_file, out_file, BMP_HEADER_SIZE)) != SUCCESS) { // TODO: account for variable header size
+    if ((exit_code = copy_from_file_to_file(p_file, out_file, P_BMP_HEADER_SIZE)) != SUCCESS) {
         goto finally;
     }
 

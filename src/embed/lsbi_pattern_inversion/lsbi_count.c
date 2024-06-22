@@ -16,15 +16,16 @@ status_code count_lsbi_changes_embedding(FILE *p_file, FILE *out_file, LSBI_coun
         count[i].should_invert = false;
     }
 
-    // TODO: Skip headers using functions in ssldevelopment branch
-    // TODO: maybe modularize a function that skips the header and LSBI pattern?
+    // Skip headers in P_FILE and OUT_FILE
+    if ((exit_code = skip_bmp_header(p_file)) != SUCCESS || (exit_code = skip_bmp_header(out_file)) != SUCCESS){
+        goto finally;
+    }
 
-    // Skip LSBI pattern
+    // Skip LSBI pattern in P_FILE and OUT_FILE
     if (fseek(p_file, 4, SEEK_CUR)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
-
     if (fseek(out_file, 4, SEEK_CUR)) {
         exit_code = FILE_READ_ERROR;
         goto finally;

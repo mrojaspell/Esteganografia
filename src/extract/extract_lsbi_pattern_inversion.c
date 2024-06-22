@@ -1,5 +1,6 @@
 #include "extract_lsbi_pattern_inversion.h"
 #include "bit_operations.h"
+#include "get_file_size.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -7,11 +8,13 @@
 status_code extract_lsbi_pattern_inversion(FILE * out_file){
     status_code exit_code = SUCCESS;
 
-
-    // TODO: skip headers
-
     // Start reading the file from the beginning
     rewind(out_file);
+
+    // Skip BMP header in OUT_FILE
+    if ((exit_code = skip_bmp_header(out_file)) != SUCCESS){
+        goto finally;
+    }
 
     // Check what LSBI patterns to invert
     bool patterns[4]; // TODO: make 4 a macro
@@ -33,6 +36,7 @@ status_code extract_lsbi_pattern_inversion(FILE * out_file){
         }
 
         // Invert the last bit if the pattern is marked to do so
+        fseek(out_file, -1, SEEK_CUR);
         if ((exit_code = invert_last_bit_by_pattern(out_file, patterns)) != SUCCESS){
             goto finally;
         }
@@ -45,8 +49,6 @@ status_code extract_lsbi_pattern_inversion(FILE * out_file){
         goto finally;
     }
     
-
-
     finally:
     return exit_code;
 }

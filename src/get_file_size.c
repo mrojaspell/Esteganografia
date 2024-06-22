@@ -74,6 +74,26 @@ status_code skip_bmp_header(FILE* file) {
     return SUCCESS;
 }
 
+status_code get_bmp_header_size(FILE * file, uint32_t * size){
+    uint8_t first[BMP_OFFSET_SIZE + BMP_OFFSET_POSITION];
+
+    if (fread(first, 1, BMP_OFFSET_SIZE + BMP_OFFSET_POSITION, file) < BMP_OFFSET_SIZE + BMP_OFFSET_POSITION) {
+        return FILE_READ_ERROR;
+    }
+
+    uint32_t payload_offset = 0;
+
+    for (int i = BMP_OFFSET_POSITION + BMP_OFFSET_SIZE - 1; i >= BMP_OFFSET_POSITION; i--) {
+        payload_offset = (payload_offset << BITS_IN_BYTES) | (first[i] & 0xFF);
+    }
+
+    rewind(file);
+
+    *size = payload_offset;
+
+    return SUCCESS;
+}
+
 // Copy len bytes from "copy_from" to "copy_to"
 status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, unsigned int len) {
     status_code exit_code = SUCCESS;

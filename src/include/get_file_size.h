@@ -40,4 +40,5 @@ status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to);
 status_code skip_bmp_header(FILE* file);
 status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, unsigned int len);
 status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to);
+status_code get_bmp_header_size(FILE * file, uint32_t * size);
 #endif
