@@ -18,7 +18,6 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
                        encryption_alg encryption, block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
-    uint8_t* file_size_buffer = NULL;
 
     // Get IN file extension
     char extension[MAX_EXTENSION_SIZE] = {0};
@@ -77,9 +76,9 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
 
-    // Embed 4 zeros using LSB1, to save space to store if the patterns 00, 01, 10, 11 are inverted or not
+    // Save space for embedding the LSBI inversion pattern
     // After embedding, we have to see if it is necessary to change these bytes or not
-    if ((exit_code = embed_number_lsbni(1, p_file, out_file, 0, false, NULL)) != SUCCESS) {
+    if ((exit_code = copy_from_file_to_file(p_file, out_file, 4)) != SUCCESS) {
         goto finally;
     }
 
@@ -108,7 +107,7 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
     // Apply the bit inversion algorithm
-    if ((exit_code = lsbi_invert_patterns(p_file, out_file, in_file_size)) != SUCCESS) {
+    if ((exit_code = lsbi_invert_patterns(p_file, out_file, IN_PAYLOAD_SIZE)) != SUCCESS) {
         goto finally;
     }
 
@@ -122,9 +121,6 @@ finally:
     }
     if (out_file != NULL) {
         fclose(out_file);
-    }
-    if (file_size_buffer != NULL) {
-        free(file_size_buffer);
     }
 
     return exit_code;

@@ -6,6 +6,6 @@
 
 #include "status_codes.h"
 
-status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file, uint32_t in_file_size);
+status_code lsbi_invert_patterns(FILE * p_file, FILE * out_file, uint32_t in_payload_size);
 
 #endif

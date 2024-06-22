@@ -8,7 +8,8 @@
 #include <string.h>
 
 
-status_code embed_file_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, FILE* in_file, bool lsbi, color * current_color) {
+status_code embed_file_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, FILE* in_file, bool lsbi,
+                             color* current_color) {
     status_code exit_code = SUCCESS;
 
     uint8_t buffer[BUFSIZ];
@@ -19,7 +20,7 @@ status_code embed_file_lsbni(const unsigned int n, FILE* p_file, FILE* out_file,
             return FILE_READ_ERROR;
 
         exit_code = embed_bytes_lsbni(n, p_file, out_file, buffer, read_bytes, lsbi, current_color);
-        
+
         if (exit_code != SUCCESS) {
             return exit_code;
         }
@@ -32,7 +33,8 @@ status_code embed_file_lsbni(const unsigned int n, FILE* p_file, FILE* out_file,
     return exit_code;
 }
 
-status_code embed_number_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, uint32_t number_to_embed, bool lsbi, color * current_color) {
+status_code embed_number_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, uint32_t number_to_embed, bool lsbi,
+                               color* current_color) {
     const uint8_t* original = (uint8_t*)&number_to_embed;
     // Because we're making an array out of an 32bit number, endianess is kicking our ass
     // So we decided to reverse the array manually, knowing that it's always size 4;
@@ -47,13 +49,14 @@ status_code embed_number_lsbni(const unsigned int n, FILE* p_file, FILE* out_fil
 
 
 // Embed len bytes from in_file in p_file, and save it in out_file
-status_code embed_bytes_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, const uint8_t* bytes_to_embed, unsigned int len, bool lsbi, color * current_color) {
+status_code embed_bytes_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, const uint8_t* bytes_to_embed,
+                              unsigned int len, bool lsbi, color* current_color) {
     status_code exit_code = SUCCESS;
 
     // Calculate bytes needed from p_file to embed len bytes
-    const unsigned int bytes_to_embed_byte = lsbi ? BYTES_TO_EMBED_BYTE_LSBI(n) : BYTES_TO_EMBED_BYTE_LSBN(n);
-    const unsigned int bytes_needed = bytes_to_embed_byte * len;
-    
+    const unsigned int bytes_to_embed_byte = BYTES_TO_EMBED_BYTE_LSBN(n);
+    const unsigned int bytes_needed = (lsbi ? BYTES_TO_EMBED_BYTE_LSBI(n) : BYTES_TO_EMBED_BYTE_LSBN(n)) * len;
+
 
     // Copy the needed bytes from p_file to buffer
     uint8_t* buffer = malloc(bytes_needed);
@@ -74,19 +77,21 @@ status_code embed_bytes_lsbni(const unsigned int n, FILE* p_file, FILE* out_file
     // Embed bytes to buffer
     unsigned int it_buffer = 0;
     for (int i = 0; i < len; i++) {
-        uint8_t byte_to_embed = bytes_to_embed[i];
-        for (int j = 0; j < bytes_to_embed_byte; j += 1) {
+        const uint8_t byte_to_embed = bytes_to_embed[i];
+        for (int bit_position = 0; bit_position < bytes_to_embed_byte; bit_position += 1) {
             // In LSBI we don't alter color RED
             if (lsbi) {
-                color past_color = *current_color;
+                const color past_color = *current_color;
                 *current_color = get_next_color(past_color);
-                if ((past_color == RED)){
+                if (past_color == RED) {
+                    it_buffer++;
+                    bit_position--;
                     continue;
                 }
             }
-            
+
             // Embed the byte
-            const uint8_t offset = 8 - ((j + 1) * n);
+            const uint8_t offset = 8 - ((bit_position + 1) * n);
             buffer[it_buffer] = ((buffer[it_buffer] & P_MASK) | ((byte_to_embed >> offset) & EMBED_MASK));
 
             // Prepare for next loop

@@ -21,7 +21,11 @@ status_code count_lsbi_changes_embedding(FILE* p_file, FILE* out_file, LSBI_coun
         goto finally;
     }
 
-    // We don't skip LSBI pattern in P_FILE and OUT_FILE since they're changed too
+    // We skip LSBI pattern in P_FILE and OUT_FILE
+    if (fseek(p_file, 4, SEEK_CUR) || fseek(out_file, 4, SEEK_CUR) ) {
+        exit_code = FILE_READ_ERROR;
+        goto finally;
+    }
 
     uint8_t p_byte, out_byte;
     // BMP files save data in BGR format, and in LSBI we need to skip the red byte
