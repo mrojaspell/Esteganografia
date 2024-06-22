@@ -2,6 +2,7 @@
 #include "embed_utils.h"
 #include "get_file_size.h"
 #include "print_error.h"
+#include "ssl_helpers.h"
 #include "colors.h"
 #include "ssl_helpers.h"
 

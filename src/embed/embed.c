@@ -1,6 +1,3 @@
-
-#include <stdbool.h>
-#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -42,7 +39,7 @@ status_code embed(int argc, char* argv[]) {
         return status;
     }
 
-    
+
     switch (params.steg) {
     case LSB1:
         status = embed_lsbn(1, params.in_file, params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining,
