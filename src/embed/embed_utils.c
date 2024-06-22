@@ -7,43 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Copy len bytes from "copy_from" to "copy_to"
-status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, unsigned int len) {
-    status_code exit_code = SUCCESS;
-    uint8_t* buffer = malloc(len * sizeof(uint8_t));
-
-    if (fread(buffer, 1, len, copy_from) < len) {
-        exit_code = FILE_READ_ERROR;
-        goto finally;
-    }
-    if (fwrite(buffer, 1, len, copy_to) < len) {
-        exit_code = FILE_WRITE_ERROR;
-        goto finally;
-    };
-
-finally:
-    if (buffer != NULL)
-        free(buffer);
-    return exit_code;
-}
-
-// Copy the rest of copy_from to copy_to, until EOF is reached
-status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to) {
-    uint8_t buffer[BUFSIZ] = {0};
-    size_t read = 0;
-
-    while ((read = fread(buffer, 1, BUFSIZ, copy_from)) > 0) {
-        if (fwrite(buffer, 1, read, copy_to) < read) {
-            print_error(strerror(errno));
-            return FILE_WRITE_ERROR;
-        }
-    }
-
-    if (ferror(copy_from)) {
-        return FILE_READ_ERROR;
-    }
-    return SUCCESS;
-}
 
 status_code embed_file_lsbni(const unsigned int n, FILE* p_file, FILE* out_file, FILE* in_file, bool lsbi, color * current_color) {
     status_code exit_code = SUCCESS;
