@@ -8,13 +8,15 @@
 #include "get_file_size.h"
 #include "extract_lsb1.h"
 #include "extract_lsbi_pattern_inversion.h"
+#include "colors.h"
 
 
 // hidden as (real size (4 bytes total) || data || file extension (eg: .txt))
 status_code extract_lsbi(const char* p_file_path, const char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
     status_code exit_code = SUCCESS;
     uint32_t size = 0;
-    FILE *p_file = NULL, *out_file = NULL;
+    color current_rgb_color = BLUE;
+    FILE *p_file = NULL, *out_file = NULL, *tmp_file = NULL;
     uint8_t *out_buffer = NULL, *in_buffer = NULL, *decrypted_output = NULL;
 
     p_file = fopen(p_file_path, "r");
@@ -27,26 +29,45 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
-
-    if ((exit_code = extract_lsbi_pattern_inversion(p_file)) != SUCCESS){
+    tmp_file = tmpfile();
+    if (tmp_file == NULL) {
+        exit_code = FILE_OPEN_ERROR;
         goto finally;
     }
 
-    rewind(p_file);
+    if ((exit_code = copy_rest_of_file(p_file, tmp_file)) != SUCCESS) {
+        goto finally;
+    }
+
+    if ((exit_code = extract_lsbi_pattern_inversion(tmp_file, &current_rgb_color)) != SUCCESS){
+        goto finally;
+    }
+
+    rewind(tmp_file);
 
     // Skip header
-    if ((exit_code = skip_bmp_header(p_file)) != SUCCESS) {
+    if ((exit_code = skip_bmp_header(tmp_file)) != SUCCESS) {
         goto finally;
     }
 
-    uint8_t size_buffer[SECRET_SIZE_IN_COVER_LSB1(FILE_LENGTH_BYTES)] = {0};
-    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER_LSB1(FILE_LENGTH_BYTES), p_file) <
-        SECRET_SIZE_IN_COVER_LSB1(FILE_LENGTH_BYTES)) {
+    // Skip LSBI inversion pattern
+    fseek(tmp_file, 4, SEEK_CUR);
+    // We are now on the GREEN color, since we skipped the bmp header again
+    current_rgb_color = GREEN;
+
+    uint8_t size_buffer[SECRET_SIZE_IN_COVER_LSBI(FILE_LENGTH_BYTES)] = {0};
+    if (fread(size_buffer, 1, SECRET_SIZE_IN_COVER_LSBI(FILE_LENGTH_BYTES), tmp_file) <
+        SECRET_SIZE_IN_COVER_LSBI(FILE_LENGTH_BYTES)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
-    for (int i = 0; i < SECRET_SIZE_IN_COVER_LSB1(FILE_LENGTH_BYTES); i++) {
+    for (int i = 0; i < SECRET_SIZE_IN_COVER_LSBI(FILE_LENGTH_BYTES); i++) {
+        const color past_color = current_rgb_color;
+        current_rgb_color = get_next_color(current_rgb_color);
+        if (past_color == RED) {
+            continue;
+        }
         size = (size << 1) | (size_buffer[i] & 0x1);
     }
 
@@ -57,21 +78,26 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         goto finally;
     }
 
-    in_buffer = malloc(SECRET_SIZE_IN_COVER_LSB1(size));
+    in_buffer = malloc(SECRET_SIZE_IN_COVER_LSBI(size));
     size_t in_iterator = 0;
     if (in_buffer == NULL) {
         exit_code = MEMORY_ERROR;
         goto finally;
     }
 
-    if (fread(in_buffer, 1, SECRET_SIZE_IN_COVER_LSB1(size), p_file) < SECRET_SIZE_IN_COVER_LSB1(size)) {
+    if (fread(in_buffer, 1, SECRET_SIZE_IN_COVER_LSBI(size), tmp_file) < SECRET_SIZE_IN_COVER_LSBI(size)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
     for (; out_iterator < size; out_iterator++) {
         uint8_t byte = 0;
-        for (int limit = in_iterator + SECRET_SIZE_IN_COVER_LSB1(1); in_iterator < limit; in_iterator++) {
+        for (int limit = in_iterator + SECRET_SIZE_IN_COVER_LSBI(1); in_iterator < limit; in_iterator++) {
+            const color past_color = current_rgb_color;
+            current_rgb_color = get_next_color(current_rgb_color);
+            if (past_color == RED) {
+                continue;
+            }
             byte = (byte << 1) | (in_buffer[in_iterator] & 0x1);
         }
         out_buffer[out_iterator] = byte;
@@ -117,6 +143,9 @@ finally:
     }
     if (out_file != NULL) {
         fclose(out_file);
+    }
+    if (tmp_file != NULL) {
+        fclose(tmp_file);
     }
     if (out_buffer != NULL) {
         free(out_buffer);

@@ -3,6 +3,7 @@
 #include <status_codes.h>
 #include <sys/types.h>  // For off_t
 #include <stdio.h>
+#include <math.h>
 
 // Max length we allow for file extensions
 #define MAX_EXTENSION_SIZE 10
@@ -20,8 +21,9 @@
 #define FILE_LENGTH_BYTES 4
 #define FILE_LENGTH_BITS FILE_LENGTH_BYTES * 8
 
-#define SECRET_SIZE_IN_COVER_LSB1(X) (X*8)
-#define SECRET_SIZE_IN_COVER_LSB4(X) (X*2)
+#define SECRET_SIZE_IN_COVER_LSB1(X) ((X)*8)
+#define SECRET_SIZE_IN_COVER_LSB4(X) ((X)*2)
+#define SECRET_SIZE_IN_COVER_LSBI(X) ((X)*8*3/2)
 
 // The number of bytes needed to embed a byte in LSBN
 #define BYTES_TO_EMBED_BYTE_LSBN(n) (8/n)

@@ -8,6 +8,7 @@
 #include "status_codes.h"
 #include "extract_lsb1.h"
 #include "extract_lsb4.h"
+#include "extract_lsbi.h"
 
 #define REQUIRED_PARAMS_NO 3
 #define REQUIRED_ARGS_NO REQUIRED_PARAMS_NO * 2
@@ -49,6 +50,7 @@ status_code extract(int argc, char *argv[])
         status = extract_lsb4(params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining, params.password);
         break;
     case LSBI:
+        status = extract_lsbi(params.p_bitmap_file, params.out_bitmap_file, params.encryption, params.chaining, params.password);
         break;
     default:
         return INVALID_STEG_ALG;
