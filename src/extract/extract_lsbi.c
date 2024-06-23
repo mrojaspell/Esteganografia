@@ -12,9 +12,10 @@
 
 
 // hidden as (real size (4 bytes total) || data || file extension (eg: .txt))
-status_code extract_lsbi(const char* p_file_path, const char* out_file_path, encryption_alg encryption, block_chaining_mode chaining, char * password) {
+status_code extract_lsbi(const char* p_file_path, const char* out_file_path, encryption_alg encryption,
+                         block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
-    uint32_t size = 0;
+    uint32_t secret_size = 0;
     color current_rgb_color = BLUE;
     FILE *p_file = NULL, *out_file = NULL, *tmp_file = NULL;
     uint8_t *out_buffer = NULL, *in_buffer = NULL, *decrypted_output = NULL;
@@ -39,7 +40,7 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         goto finally;
     }
 
-    if ((exit_code = extract_lsbi_pattern_inversion(tmp_file, &current_rgb_color)) != SUCCESS){
+    if ((exit_code = extract_lsbi_pattern_inversion(tmp_file, &current_rgb_color)) != SUCCESS) {
         goto finally;
     }
 
@@ -68,29 +69,29 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         if (past_color == RED) {
             continue;
         }
-        size = (size << 1) | (size_buffer[i] & 0x1);
+        secret_size = (secret_size << 1) | (size_buffer[i] & 0x1);
     }
 
-    out_buffer = malloc(size);
+    out_buffer = malloc(secret_size);
     size_t out_iterator = 0;
     if (out_buffer == NULL) {
         exit_code = MEMORY_ERROR;
         goto finally;
     }
 
-    in_buffer = malloc(SECRET_SIZE_IN_COVER_LSBI(size));
+    in_buffer = malloc(SECRET_SIZE_IN_COVER_LSBI(secret_size));
     size_t in_iterator = 0;
     if (in_buffer == NULL) {
         exit_code = MEMORY_ERROR;
         goto finally;
     }
 
-    if (fread(in_buffer, 1, SECRET_SIZE_IN_COVER_LSBI(size), tmp_file) < SECRET_SIZE_IN_COVER_LSBI(size)) {
+    if (fread(in_buffer, 1, SECRET_SIZE_IN_COVER_LSBI(secret_size), tmp_file) < SECRET_SIZE_IN_COVER_LSBI(secret_size)) {
         exit_code = FILE_READ_ERROR;
         goto finally;
     }
 
-    for (; out_iterator < size; out_iterator++) {
+    for (; out_iterator < secret_size; out_iterator++) {
         uint8_t byte = 0;
         for (int limit = in_iterator + SECRET_SIZE_IN_COVER_LSBI(1); in_iterator < limit; in_iterator++) {
             const color past_color = current_rgb_color;
@@ -113,12 +114,13 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
             goto finally;
         }
 
-        decrypted_output = malloc(size);
+        decrypted_output = malloc(secret_size);
         if (decrypted_output == NULL) {
             exit_code = MEMORY_ERROR;
             goto finally;
         }
-        if (decrypt_payload(out_buffer, size, decrypted_output, &password_metadata) == -1) {
+
+        if (decrypt_payload(out_buffer, secret_size, decrypted_output, &password_metadata) == -1) {
             exit_code = ENCRYPTION_ERROR;
             goto finally;
         }
@@ -128,12 +130,10 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         if (fwrite(output_without_size, 1, true_size, out_file) < true_size) {
             exit_code = FILE_WRITE_ERROR;
         }
-
-        goto finally;
-    }
-
-    if (fwrite(out_buffer, 1, size, out_file) < size) {
-        exit_code = FILE_WRITE_ERROR;
+    } else {
+        if (fwrite(out_buffer, 1, secret_size, out_file) < secret_size) {
+            exit_code = FILE_WRITE_ERROR;
+        }
     }
 
 

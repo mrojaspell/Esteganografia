@@ -39,17 +39,6 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
     }
 
 
-    // Check if P file is big enough to embed IN file
-    // (add 1 to account for \0 in extension)
-    const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
-    const int P_AVAILABLE_SIZE = (p_file_size - BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBN(n);
-    if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
-        // TODO: Show maximum secret size for bmp
-        print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
-        exit_code = SECRET_TOO_BIG;
-        goto finally;
-    }
-
     password_metadata password_metadata = {0};
     if (password != 0) {
         // tenemos password para encriptar
@@ -84,16 +73,31 @@ status_code embed_lsbn(unsigned char n, char* in_file_path, char* p_file_path, c
         goto finally;
     }
 
+    uint32_t P_BMP_HEADER_SIZE;
+    if ((exit_code = get_bmp_header_size(p_file, &P_BMP_HEADER_SIZE)) != SUCCESS) {
+        goto finally;
+    }
+
+    // Check if P file is big enough to embed IN file
+    // (add 1 to account for \0 in extension)
+    const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
+    const int P_AVAILABLE_SIZE = (p_file_size - P_BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBN(n);
+    if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
+        // TODO: Show maximum secret size for bmp
+        print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
+        exit_code = SECRET_TOO_BIG;
+        goto finally;
+    }
+
+
     // Copy header from P file to OUT file
     if ((exit_code = copy_bmp_header_file_to_file(p_file, out_file)) != SUCCESS) {
         goto finally;
     }
 
-
-
     if (password != NULL) {
-        //asignar memorias
-        plaintext_input = malloc(in_file_size + sizeof(in_file_size) + in_extension_size + 1);
+        // Allocate enough memory for in_file_size (4 bytes) + in_file + extension (plus \0)
+        plaintext_input = malloc( sizeof(uint32_t) + in_file_size + in_extension_size + 1);
         if (plaintext_input == NULL) {
             exit_code = MEMORY_ERROR;
             goto finally;

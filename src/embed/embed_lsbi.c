@@ -18,6 +18,8 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
                        encryption_alg encryption, block_chaining_mode chaining, char* password) {
     status_code exit_code = SUCCESS;
     FILE *in_file = NULL, *p_file = NULL, *out_file = NULL;
+    uint32_t encrypted_size = 0, encrypted_output_size;
+    uint8_t *plaintext_input = NULL, *encrypted_output = NULL;
 
     // Get IN file extension
     char extension[MAX_EXTENSION_SIZE] = {0};
@@ -30,6 +32,15 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     if (in_extension_size == 0 || in_file_size == -1 || p_file_size == -1) {
         exit_code = FILE_OPEN_ERROR;
         goto finally;
+    }
+
+    password_metadata password_metadata = {0};
+    if (password != 0) {
+        password_metadata.password = password;
+        if ((exit_code = initialize_password_metadata(&password_metadata, encryption, chaining)) != SUCCESS) {
+            print_error("Could not initialize password metadata\n");
+            goto finally;
+        }
     }
 
     // Open IN file, read mode
@@ -85,31 +96,72 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     // Set the first color to green (because embed_number_lsbni already used BLUE-GREEN-RED-BLUE)
     color current_color = GREEN;
 
-    // Embed in_file filesize in out_file using LSBI
-    if ((exit_code = embed_number_lsbni(n, p_file, out_file, in_file_size, true, &current_color)) != SUCCESS) {
-        goto finally;
+    if (password != NULL) {
+        // Allocate enough memory for in_file_size (4 bytes) + in_file + extension (plus \0)
+        plaintext_input = malloc(sizeof(uint32_t) + in_file_size + in_extension_size + 1);
+        if (plaintext_input == NULL) {
+            exit_code = MEMORY_ERROR;
+            goto finally;
+        }
+
+        // Save size of plaintext input
+        memcpy(plaintext_input, &in_file_size, sizeof(uint32_t));
+
+        // Write the whole original file
+        if (fread(plaintext_input + sizeof(uint32_t), 1, in_file_size, in_file) < in_file_size) {
+            exit_code = FILE_READ_ERROR;
+            goto finally;
+        }
+
+        // Write the extension
+        memcpy(plaintext_input + sizeof(uint32_t) + in_file_size, extension, in_extension_size + 1);
+
+        encrypted_size = encrypt_payload(plaintext_input, IN_PAYLOAD_SIZE, &encrypted_output, &encrypted_output_size,
+                                         &password_metadata);
+
+        if ((exit_code = embed_number_lsbni(n, p_file, out_file, encrypted_size, true, &current_color)) != SUCCESS) {
+            goto finally;
+        }
+        if ((exit_code = embed_bytes_lsbni(n, p_file, out_file, encrypted_output, encrypted_size, true,
+                                           &current_color)) != SUCCESS) {
+            goto finally;
+        }
+        // Copy the rest of p_file to out_file
+        if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
+            goto finally;
+        }
+
+        // Apply the bit inversion algorithm
+        if ((exit_code = lsbi_invert_patterns(p_file, out_file, encrypted_size + sizeof(uint32_t))) != SUCCESS) {
+            goto finally;
+        }
+    } else {
+        // Embed in_file filesize in out_file using LSBI
+        if ((exit_code = embed_number_lsbni(n, p_file, out_file, in_file_size, true, &current_color)) != SUCCESS) {
+            goto finally;
+        }
+
+        // Embed in_file content in out_file
+        if ((exit_code = embed_file_lsbni(n, p_file, out_file, in_file, true, &current_color)) != SUCCESS) {
+            goto finally;
+        }
+
+        // Embed in_file extension in out_file
+        if ((exit_code = embed_bytes_lsbni(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1, true,
+                                           &current_color)) != SUCCESS) {
+            goto finally;
+        }
+        // Copy the rest of p_file to out_file
+        if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
+            goto finally;
+        }
+
+        // Apply the bit inversion algorithm
+        if ((exit_code = lsbi_invert_patterns(p_file, out_file, IN_PAYLOAD_SIZE)) != SUCCESS) {
+            goto finally;
+        }
     }
 
-    // Embed in_file content in out_file
-    if ((exit_code = embed_file_lsbni(n, p_file, out_file, in_file, true, &current_color)) != SUCCESS) {
-        goto finally;
-    }
-
-    // Embed in_file extension in out_file
-    if ((exit_code = embed_bytes_lsbni(n, p_file, out_file, (uint8_t*)extension, in_extension_size + 1, true,
-                                       &current_color)) != SUCCESS) {
-        goto finally;
-    }
-
-    // Copy the rest of p_file to out_file
-    if ((exit_code = copy_rest_of_file(p_file, out_file)) != SUCCESS) {
-        goto finally;
-    }
-
-    // Apply the bit inversion algorithm
-    if ((exit_code = lsbi_invert_patterns(p_file, out_file, IN_PAYLOAD_SIZE)) != SUCCESS) {
-        goto finally;
-    }
 
 finally:
     // Close resources
@@ -121,6 +173,12 @@ finally:
     }
     if (out_file != NULL) {
         fclose(out_file);
+    }
+    if (plaintext_input != NULL) {
+        free(plaintext_input);
+    }
+    if (encrypted_output != NULL) {
+        free(encrypted_output);
     }
 
     return exit_code;

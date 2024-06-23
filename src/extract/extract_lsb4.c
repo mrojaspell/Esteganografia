@@ -99,12 +99,10 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryptio
         if (fwrite(output_without_size, 1, true_size, out_file) < true_size) {
             exit_code = FILE_WRITE_ERROR;
         }
-
-        goto finally;
-    }
-
-    if (fwrite(out_buffer, 1, size, out_file) < size) {
-        exit_code = FILE_WRITE_ERROR;
+    } else {
+        if (fwrite(out_buffer, 1, size, out_file) < size) {
+            exit_code = FILE_WRITE_ERROR;
+        }
     }
 
 finally:
