@@ -31,10 +31,6 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
     int iklen = EVP_CIPHER_key_length(password_metadata->cypher());
     const int ivlen = EVP_CIPHER_iv_length(password_metadata->cypher());
 
-    if (encription_alg == DES) {
-        iklen = 8;
-    }
-
     unsigned char* key_iv_pair = malloc(iklen + ivlen);
     if (key_iv_pair == NULL) {
         print_error("Not enough memory to allocate key and IV");
@@ -71,6 +67,15 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 
     memcpy(password_metadata->key, key_iv_pair, iklen);
     memcpy(password_metadata->init_vector, key_iv_pair + iklen, ivlen);
+
+    if (encription_alg == DES) {
+        // We are using triple DES, so decrypting is D_k1(E_k2(D_k3(c)))
+        // Since we want to emulate simple DES, we must make sure that K1 = K2 = K3
+        // and key size of simple DES is keysize of 3DES/3, obviously
+        const uint32_t des_key_length = iklen / 3;
+        memcpy(password_metadata->key + des_key_length, password_metadata->key, des_key_length);
+        memcpy(password_metadata->key + 2*des_key_length, password_metadata->key, des_key_length);
+    }
 
     free(key_iv_pair);
 
