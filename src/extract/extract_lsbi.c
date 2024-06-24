@@ -127,6 +127,11 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
         true_size = *((uint32_t*)decrypted_output);
         const uint8_t* output_without_size = decrypted_output + 4;
 
+        if (true_size > secret_size) {
+            exit_code = ENCRYPTION_ERROR;
+            goto finally;
+        }
+
         if (fwrite(output_without_size, 1, true_size, out_file) < true_size) {
             exit_code = FILE_WRITE_ERROR;
         }

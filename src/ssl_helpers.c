@@ -10,7 +10,7 @@ cypher_strategy cypher_strategies[4][4] = {
     {EVP_aes_128_cbc, EVP_aes_128_ecb, EVP_aes_128_cfb, EVP_aes_128_ofb},
     {EVP_aes_192_cbc, EVP_aes_192_ecb, EVP_aes_192_cfb, EVP_aes_192_ofb},
     {EVP_aes_256_cbc, EVP_aes_256_ecb, EVP_aes_256_cfb, EVP_aes_256_ofb},
-    {EVP_des_cbc, EVP_des_ecb, EVP_des_cfb, EVP_des_ofb}
+    {EVP_des_ede3_cbc, EVP_des_ede3_ecb, EVP_des_ede3_cfb, EVP_des_ede3_ofb}
 };
 
 
@@ -28,8 +28,12 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 
     password_metadata->cypher = cypher_strategies[encription_alg][block_chaining_mode];
 
-    const int iklen = EVP_CIPHER_key_length(password_metadata->cypher());
+    int iklen = EVP_CIPHER_key_length(password_metadata->cypher());
     const int ivlen = EVP_CIPHER_iv_length(password_metadata->cypher());
+
+    if (encription_alg == DES) {
+        iklen = 8;
+    }
 
     unsigned char* key_iv_pair = malloc(iklen + ivlen);
     if (key_iv_pair == NULL) {
