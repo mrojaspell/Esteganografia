@@ -20,7 +20,7 @@ status_code extract_lsbi_pattern_inversion(FILE * out_file, color* current_color
     }
 
     // Check what LSBI patterns to invert
-    bool patterns[4]; // TODO: make 4 a macro
+    bool patterns[4];
     uint8_t read_byte;
     for (size_t i = 0; i < 4; i++) {
         bool bit;
