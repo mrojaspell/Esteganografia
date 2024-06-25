@@ -89,11 +89,14 @@ status_code extract_lsb4(const char* p_bmp, const char* out_file_path, encryptio
             exit_code = MEMORY_ERROR;
             goto finally;
         }
-        if (decrypt_payload(out_buffer, size, decrypted_output, &password_metadata) == -1) {
+
+        int decrypted_size = decrypt_payload(out_buffer, size, decrypted_output, &password_metadata);
+
+        if (decrypted_size == -1) {
             exit_code = ENCRYPTION_ERROR;
             goto finally;
         }
-        true_size = *((uint32_t*)decrypted_output);
+        true_size = decrypted_size - 4;
         const uint8_t *output_without_size = decrypted_output + 4;
 
         if (true_size > size) {

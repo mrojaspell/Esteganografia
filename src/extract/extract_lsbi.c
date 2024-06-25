@@ -120,11 +120,12 @@ status_code extract_lsbi(const char* p_file_path, const char* out_file_path, enc
             goto finally;
         }
 
-        if (decrypt_payload(out_buffer, secret_size, decrypted_output, &password_metadata) == -1) {
+        int decrypted_size = decrypt_payload(out_buffer, secret_size, decrypted_output, &password_metadata);
+        if (decrypted_size == -1) {
             exit_code = ENCRYPTION_ERROR;
             goto finally;
         }
-        true_size = *((uint32_t*)decrypted_output);
+        true_size = decrypted_size - 4;
         const uint8_t* output_without_size = decrypted_output + 4;
 
         if (true_size > secret_size) {

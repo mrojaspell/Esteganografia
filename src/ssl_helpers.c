@@ -4,8 +4,6 @@
 
 //end .h
 
-int KEY_SIZE[] = {16, 24, 32, 8};
-int BLOCK_SIZE[] = {16, 16, 16, 8};
 cypher_strategy cypher_strategies[4][4] = {
     {EVP_aes_128_cbc, EVP_aes_128_ecb, EVP_aes_128_cfb, EVP_aes_128_ofb},
     {EVP_aes_192_cbc, EVP_aes_192_ecb, EVP_aes_192_cfb, EVP_aes_192_ofb},
@@ -53,44 +51,21 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 
     const unsigned char salt[8] = {0};
 
-    if (encription_alg == DES) {
-        if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
-                               strlen(password_metadata->password),
-                               salt,
-                               sizeof(salt),
-                               10000,
-                               EVP_sha256(),
-                               8 + ivlen,
-                               key_iv_pair)) {
-            print_error("Key derivation failed");
-            free(key_iv_pair);
-            return KEY_DERIVATION_ERROR;
-        }
-
-        // Use the same 8 byte key for all 3 DES keys
-        memcpy(password_metadata->key, key_iv_pair, 8);
-        memcpy(password_metadata->key + 8, key_iv_pair, 8);
-        memcpy(password_metadata->key + 16, key_iv_pair, 8);
-
-        // Use the next 8 bytes for the IV
-        memcpy(password_metadata->init_vector, key_iv_pair + 8, ivlen);
-    } else {
-        if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
-                               strlen(password_metadata->password),
-                               salt,
-                               sizeof(salt),
-                               1000,
-                               EVP_sha256(),
-                               keylen + ivlen,
-                               key_iv_pair)) {
-            print_error("Key derivation failed");
-            free(key_iv_pair);
-            return KEY_DERIVATION_ERROR;
-        }
-
-        memcpy(password_metadata->key, key_iv_pair, keylen);
-        memcpy(password_metadata->init_vector, key_iv_pair+keylen, ivlen);
+    if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
+                           strlen(password_metadata->password),
+                           salt,
+                           sizeof(salt),
+                           10000,
+                           EVP_sha256(),
+                           keylen + ivlen,
+                           key_iv_pair)) {
+        print_error("Key derivation failed");
+        free(key_iv_pair);
+        return KEY_DERIVATION_ERROR;
     }
+
+    memcpy(password_metadata->key, key_iv_pair, keylen);
+    memcpy(password_metadata->init_vector, key_iv_pair + keylen, ivlen);
 
     free(key_iv_pair);
 
