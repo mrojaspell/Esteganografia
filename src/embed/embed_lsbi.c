@@ -76,8 +76,10 @@ status_code embed_lsbi(unsigned char n, char* in_file_path, char* p_file_path, c
     const int IN_PAYLOAD_SIZE = FILE_LENGTH_BYTES + in_file_size + in_extension_size + 1;
     const int P_AVAILABLE_SIZE = (p_file_size - P_BMP_HEADER_SIZE) / BYTES_TO_EMBED_BYTE_LSBI(n);
     if (P_AVAILABLE_SIZE < IN_PAYLOAD_SIZE) {
-        // TODO: Show maximum secret size for bmp
-        print_error("El archivo bmp no puede albergar el archivo a ocultar completo\n");
+        print_error("\
+            El archivo bmp no puede albergar el archivo a ocultar completo:\n\
+            El archivo portador puede embeber como maximo: %d bytes y el archivo que quiere embebe ocupa %d bytes\n\
+        ", P_AVAILABLE_SIZE, IN_PAYLOAD_SIZE);
         exit_code = SECRET_TOO_BIG;
         goto finally;
     }
