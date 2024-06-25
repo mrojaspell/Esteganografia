@@ -28,10 +28,10 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 
     password_metadata->cypher = cypher_strategies[encription_alg][block_chaining_mode];
 
-    int iklen = EVP_CIPHER_key_length(password_metadata->cypher());
+    const int keylen = EVP_CIPHER_key_length(password_metadata->cypher());
     const int ivlen = EVP_CIPHER_iv_length(password_metadata->cypher());
 
-    unsigned char* key_iv_pair = malloc(iklen + ivlen);
+    unsigned char* key_iv_pair = malloc(keylen + ivlen);
     if (key_iv_pair == NULL) {
         print_error("Not enough memory to allocate key and IV");
         return MEMORY_ERROR;
@@ -45,36 +45,51 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
     }
 
     //initialize password key vector
-    password_metadata->key = malloc(iklen);
+    password_metadata->key = malloc(keylen);
     if (password_metadata->key == NULL) {
         print_error("Not enogh memory to allocate key");
         return MEMORY_ERROR;
     }
 
     const unsigned char salt[8] = {0};
-    if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
-                           strlen(password_metadata->password),
-                           salt,
-                           sizeof(salt),
-                           10000,
-                           EVP_sha256(),
-                           iklen + ivlen,
-                           key_iv_pair)) {
-        print_error("Key derivation failed");
-        free(key_iv_pair);
-        return KEY_DERIVATION_ERROR;
-    }
-
-    memcpy(password_metadata->key, key_iv_pair, iklen);
-    memcpy(password_metadata->init_vector, key_iv_pair + iklen, ivlen);
 
     if (encription_alg == DES) {
-        // We are using triple DES, so decrypting is D_k1(E_k2(D_k3(c)))
-        // Since we want to emulate simple DES, we must make sure that K1 = K2 = K3
-        // and key size of simple DES is keysize of 3DES/3, obviously
-        const uint32_t des_key_length = iklen / 3;
-        memcpy(password_metadata->key + des_key_length, password_metadata->key, des_key_length);
-        memcpy(password_metadata->key + 2*des_key_length, password_metadata->key, des_key_length);
+        if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
+                               strlen(password_metadata->password),
+                               salt,
+                               sizeof(salt),
+                               10000,
+                               EVP_sha256(),
+                               8 + ivlen,
+                               key_iv_pair)) {
+            print_error("Key derivation failed");
+            free(key_iv_pair);
+            return KEY_DERIVATION_ERROR;
+        }
+
+        // Use the same 8 byte key for all 3 DES keys
+        memcpy(password_metadata->key, key_iv_pair, 8);
+        memcpy(password_metadata->key + 8, key_iv_pair, 8);
+        memcpy(password_metadata->key + 16, key_iv_pair, 8);
+
+        // Use the next 8 bytes for the IV
+        memcpy(password_metadata->init_vector, key_iv_pair + 8, ivlen);
+    } else {
+        if (!PKCS5_PBKDF2_HMAC(password_metadata->password,
+                               strlen(password_metadata->password),
+                               salt,
+                               sizeof(salt),
+                               1000,
+                               EVP_sha256(),
+                               keylen + ivlen,
+                               key_iv_pair)) {
+            print_error("Key derivation failed");
+            free(key_iv_pair);
+            return KEY_DERIVATION_ERROR;
+        }
+
+        memcpy(password_metadata->key, key_iv_pair, keylen);
+        memcpy(password_metadata->init_vector, key_iv_pair+keylen, ivlen);
     }
 
     free(key_iv_pair);
@@ -91,10 +106,9 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 /// @return lenght of cyphered text
 int encrypt_payload(uint8_t* decrypted_input, uint32_t input_len, uint8_t** encrypted_output, uint32_t* output_size,
                     password_metadata* password_metadata) {
-    EVP_CIPHER_CTX* ctx;
-    ctx = EVP_CIPHER_CTX_new();
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 
-    if (!(ctx)) {
+    if (ctx == NULL) {
         print_error("Could not generate cypher context");
         return ENCRYPTION_ERROR;
     }
@@ -138,7 +152,7 @@ int encrypt_payload(uint8_t* decrypted_input, uint32_t input_len, uint8_t** encr
 int decrypt_payload(uint8_t* encrypted_input, uint32_t encrypted_length, uint8_t* decrypted_out,
                     password_metadata* password_metadata) {
     EVP_CIPHER_CTX* ctx;
-    if (!(ctx = EVP_CIPHER_CTX_new())) {
+    if ((ctx = EVP_CIPHER_CTX_new()) == NULL) {
         printf("Could not instanciate cypher context");
         return -1;
     }
