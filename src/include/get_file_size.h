@@ -38,7 +38,7 @@ off_t get_file_size(const char* filepath);
 
 // Copy file extension to buffer. Returns size in bytes.
 int get_file_extension(const char* filepath, char* extension);
-status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to);
+status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to, uint32_t* bmp_header_size);
 status_code skip_bmp_header(FILE* file);
 status_code copy_from_file_to_file(FILE* copy_from, FILE* copy_to, unsigned int len);
 status_code copy_rest_of_file(FILE* copy_from, FILE* copy_to);

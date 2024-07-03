@@ -36,7 +36,7 @@ int get_file_extension(const char* filepath, char* extension) {
     return i;
 }
 
-status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to) {
+status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to, uint32_t* bmp_header_size) {
     uint8_t first[BMP_OFFSET_SIZE + BMP_OFFSET_POSITION];
 
     if (fread(first, 1, BMP_OFFSET_SIZE + BMP_OFFSET_POSITION, copy_from) < BMP_OFFSET_SIZE + BMP_OFFSET_POSITION) {
@@ -47,6 +47,10 @@ status_code copy_bmp_header_file_to_file(FILE* copy_from, FILE* copy_to) {
 
     for (int i = BMP_OFFSET_POSITION + BMP_OFFSET_SIZE - 1; i >= BMP_OFFSET_POSITION; i--) {
         payload_offset = (payload_offset << BITS_IN_BYTES) | (first[i] & 0xFF);
+    }
+
+    if (bmp_header_size != NULL) {
+        *bmp_header_size = payload_offset;
     }
 
     rewind(copy_from);

@@ -79,8 +79,9 @@ int initialize_password_metadata(password_metadata* password_metadata, encryptio
 /// @param encrypted_output text to output
 /// @param password_metadata metadata relevant for encription
 /// @return lenght of cyphered text
-int encrypt_payload(uint8_t* decrypted_input, uint32_t input_len, uint8_t** encrypted_output, uint32_t* output_size,
-                    password_metadata* password_metadata) {
+status_code encrypt_payload(uint8_t* decrypted_input, uint32_t input_len, uint8_t** encrypted_output,
+                            uint32_t* output_size,
+                            password_metadata* password_metadata) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 
     if (ctx == NULL) {
@@ -113,8 +114,9 @@ int encrypt_payload(uint8_t* decrypted_input, uint32_t input_len, uint8_t** encr
     }
 
     cypher_length += length;
+    *output_size = cypher_length;
     EVP_CIPHER_CTX_free(ctx);
-    return cypher_length;
+    return SUCCESS;
 }
 
 
