@@ -60,7 +60,7 @@ static status_code open_files(struct params* params, FILE** p_file, FILE** in_fi
         return FILE_OPEN_ERROR;
     }
 
-    *out_file = fopen(params->out_bitmap_file, "w");
+    *out_file = fopen(params->out_bitmap_file, (params->steg == LSBI) ? "w+" : "w");
     if (*out_file == NULL) {
         print_error("Coudn't open out file\n");
         FCLOSE(*p_file);
@@ -82,7 +82,13 @@ static status_code prepare_payload(uint8_t** payload, uint32_t* payload_size, of
     }
 
     // Write the file size
-    memcpy(*payload, &in_file_size, sizeof(uint32_t));
+    uint8_t file_size_buffer[4];
+    file_size_buffer[0] = (in_file_size >> 24) & 0xFF;
+    file_size_buffer[1] = (in_file_size >> 16) & 0xFF;
+    file_size_buffer[2] = (in_file_size >> 8) & 0xFF;
+    file_size_buffer[3] = in_file_size & 0xFF;
+
+    memcpy(*payload, file_size_buffer, sizeof(uint32_t));
 
     // Write the original file
     if (fread(*payload + sizeof(uint32_t), 1, in_file_size, in_file) < in_file_size) {
@@ -194,18 +200,33 @@ status_code embed(int argc, char* argv[]) {
         if (status != SUCCESS) goto finally;
 
         status = embed_bytes_lsbni(1, p_file, out_file, payload, payload_size, false, NULL);
+        if (status != SUCCESS) goto finally;
+
+        status = copy_rest_of_file(p_file, out_file);
         break;
     case LSB4:
         status = check_lsbn_file_sizes(4, payload_size, p_file_size, p_bmp_header_size);
         if (status != SUCCESS) goto finally;
 
         status = embed_bytes_lsbni(4, p_file, out_file, payload, payload_size, false, NULL);
+        if (status != SUCCESS) goto finally;
+
+        status = copy_rest_of_file(p_file, out_file);
         break;
     case LSBI:
         status = check_lsbi_file_sizes(payload_size, p_file_size, p_bmp_header_size);
         if (status != SUCCESS) goto finally;
 
+        // Save space for bit inversion pattern
+        status = copy_from_file_to_file(p_file, out_file, 4);
+        if (status != SUCCESS) goto finally;
+        // After bit pattern, we're in green color.
+        current_color = GREEN;
+
         status = embed_bytes_lsbni(1, p_file, out_file, payload, payload_size, true, &current_color);
+        if (status != SUCCESS) goto finally;
+
+        status = copy_rest_of_file(p_file, out_file);
         if (status != SUCCESS) goto finally;
 
         status = lsbi_invert_patterns(p_file, out_file, payload_size);
